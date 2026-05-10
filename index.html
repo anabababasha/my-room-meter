@@ -176,7 +176,7 @@
   .cap-btn:disabled{opacity:0.3;cursor:default;}
 
   /* SPOTS LIST */
-  .spots-wrap{padding:8px;}
+  .spots-wrap{padding:8px;} .spot-item{display:flex;align-items:center;gap:8px;padding:10px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:6px;background:var(--panel);}
   .spot-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:5px;background:var(--panel);}
   .spot-idx{font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:22px;}
   .spot-info{flex:1;}
@@ -767,98 +767,164 @@ function renderSpotsList() {
   document.getElementById('spot-count').textContent = spots.length;
 
   if (!spots.length) {
-    noMsg.style.display = ''; list.innerHTML = ''; list.appendChild(noMsg);
-    footer.style.display = 'none'; return;
+    noMsg.style.display = '';
+    list.innerHTML = '';
+    list.appendChild(noMsg);
+    footer.style.display = 'none';
+    return;
   }
   noMsg.style.display = 'none';
-  list.innerHTML = spots.map((sp, i) => `
-    <div class="spot-item">
-      <span class="spot-idx">${String(i+1).padStart(2,'0')}</span>
-      <div class="spot-info">
-        <div class="spot-name-lbl">${sp.name}</div>
-        <div class="spot-meta">${sp.timestamp} · ${sp.sampleCount} samples</div>
+  // Build all spots — always visible, no scroll cap
+  list.innerHTML = spots.map((sp, i) => {
+    const scoreCol = sp.avg < 45 ? '#39ff7a' : sp.avg < 60 ? '#f5a623' : '#ff3b3b';
+    const bandStr = sp.bands ? sp.bands.slice(0,4).map(b=>b.label.replace('Hz','').replace('000','k')+':'+b.db.toFixed(0)).join(' ') : '';
+    return `<div class="spot-item" id="sitem-${sp.id}">
+      <div class="spot-num" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:26px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:3px 4px;">${String(i+1).padStart(2,'0')}</div>
+      <div class="spot-info" style="flex:1;min-width:0;">
+        <div class="spot-name-lbl" style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.name}</div>
+        <div class="spot-meta" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;">${sp.timestamp} · ${sp.sampleCount} smpl</div>
+        ${bandStr ? `<div style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;">${bandStr}</div>` : ''}
       </div>
-      <span class="spot-avg-pill">${sp.avg.toFixed(1)}</span>
-      <button class="spot-rm" onclick="removeSpot(${sp.id})">×</button>
-    </div>`).join('');
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
+        <span style="font-family:var(--mono);font-size:15px;font-weight:700;color:${scoreCol};">${sp.avg.toFixed(1)}</span>
+        <span style="font-size:8px;color:var(--text-dim);font-weight:600;letter-spacing:0.1em;">dB AVG</span>
+      </div>
+      <button class="spot-rm" onclick="removeSpot(${sp.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1;padding:4px 6px;margin-left:4px;flex-shrink:0;">×</button>
+    </div>`;
+  }).join('');
   footer.style.display = '';
 }
 
 // ═══════════════════════════════════════════════════════
-//  ACOUSTIC ASSESSMENT ENGINE
+//  ACOUSTIC ASSESSMENT ENGINE  (v2 — relative band analysis)
 // ═══════════════════════════════════════════════════════
-function assessSpot(spot) {
+function assessSpot(spot, allSpots) {
   const { avg, min, max, variance, bands } = spot;
   const range = max - min;
-  let verdict = '', score = 0;
+  let score = 0;
   const notes = [], recs = [];
 
-  // Noise floor score
-  if (avg < 35)      { verdict = 'Exceptionally quiet — near-anechoic conditions at this position.'; score = 95; }
-  else if (avg < 45) { verdict = 'Very quiet. Ideal for recording or critical listening.'; score = 85; }
-  else if (avg < 55) { verdict = 'Acceptable noise floor. Typical of a treated home studio.'; score = 70; }
-  else if (avg < 65) { verdict = 'Elevated noise floor. Background masking is noticeable.'; score = 50; }
-  else if (avg < 75) { verdict = 'High ambient level. Significant masking of detail.'; score = 30; }
-  else               { verdict = 'Acoustically problematic. Immediate treatment required.'; score = 12; }
+  // ── NOISE FLOOR ──────────────────────────────────────
+  let verdict = '';
+  if      (avg < 30) { verdict = 'Near-silent. Exceptional acoustic isolation at this position.'; score = 96; }
+  else if (avg < 38) { verdict = 'Exceptionally quiet. Near-anechoic conditions for a typical room.'; score = 90; }
+  else if (avg < 45) { verdict = 'Very quiet. Ideal for recording or critical listening.'; score = 82; }
+  else if (avg < 52) { verdict = 'Quiet. Acceptable noise floor for most production work.'; score = 72; }
+  else if (avg < 60) { verdict = 'Moderate. Usable but background noise is present and measurable.'; score = 58; }
+  else if (avg < 68) { verdict = 'Elevated noise floor. Significant masking of quiet details.'; score = 40; }
+  else if (avg < 75) { verdict = 'Loud environment. Recording here will pick up room noise clearly.'; score = 25; }
+  else               { verdict = 'Acoustically problematic. Immediate treatment or relocation required.'; score = 10; }
 
-  // Variance
-  if (variance > 12) {
-    notes.push('High temporal variance (±' + variance.toFixed(1) + ' dB) — strong reflections, flutter echo, or intermittent source present.');
-    recs.push('Do a hand-clap test to detect flutter echo between parallel walls.');
-    score -= 10;
-  } else if (variance > 6) {
-    notes.push('Moderate variance (±' + variance.toFixed(1) + ' dB) — possible modal resonance or an intermittent source (HVAC, refrigerator).');
-    score -= 4;
+  // ── TEMPORAL VARIANCE ────────────────────────────────
+  if (variance > 15) {
+    notes.push('Very high temporal instability (±' + variance.toFixed(1) + ' dB). Strong flutter echo, nearby intermittent source, or modal ringing detected.');
+    recs.push('Clap sharply once and listen for flutter echo (rapid repetitive decay). Treat parallel walls with absorption panels.');
+    score -= 14;
+  } else if (variance > 9) {
+    notes.push('High variance (±' + variance.toFixed(1) + ' dB). Likely an intermittent noise source — HVAC cycle, traffic, footsteps above.');
+    recs.push('Time the variance peaks — if periodic (every 30–90s) suspect HVAC. Check vents nearest to this corner.');
+    score -= 8;
+  } else if (variance > 5) {
+    notes.push('Moderate variance (±' + variance.toFixed(1) + ' dB). Sound field has mild instability — possible low-frequency mode.');
+    score -= 3;
   } else {
-    notes.push('Low temporal variance (±' + variance.toFixed(1) + ' dB) — sound field is stable at this position.');
+    notes.push('Low temporal variance (±' + variance.toFixed(1) + ' dB). Sound field is stable and consistent at this position.');
+    score += 3;
   }
 
-  // Dynamic range
-  if (range > 25) {
-    notes.push('Wide dynamic range (' + range.toFixed(1) + ' dB) suggests modal node/antinode boundary or intermittent peak source.');
-    recs.push('Sweep a sine tone 40–120 Hz to identify standing wave nodes at this position.');
+  // ── PEAK-TO-AVERAGE RATIO ────────────────────────────
+  const crest = max - avg;
+  if (crest > 20) {
+    notes.push('High crest factor (' + crest.toFixed(1) + ' dB above average). Intermittent loud events are distorting the average — consider longer measurement time.');
+    score -= 5;
+  } else if (crest < 6 && avg > 40) {
+    notes.push('Very low crest factor (' + crest.toFixed(1) + ' dB) — noise is continuous and broadband rather than impulsive. Likely HVAC or traffic.');
   }
 
-  // Spectral analysis
-  if (bands && bands.length) {
-    const bassDb   = avg + (bands.find(b=>b.label==='125Hz')?.db ?? -60);
-    const midDb    = avg + (bands.find(b=>b.label==='1kHz')?.db ?? -60);
-    const highDb   = avg + (bands.find(b=>b.label==='4kHz')?.db ?? -60);
+  // ── SPECTRAL / BAND ANALYSIS (relative, not absolute) ────────────────────
+  if (bands && bands.length >= 4) {
+    const validBands = bands.filter(b => b.db > -115);
 
-    const bassRelative = bands.find(b=>b.label==='63Hz')?.db ?? -99;
-    const highRelative = bands.find(b=>b.label==='8kHz')?.db ?? -99;
+    if (validBands.length >= 3) {
+      // Relative tilt: compare bass region vs mid region
+      const bassAvg   = bands.filter(b=>['63Hz','125Hz'].includes(b.label)).map(b=>b.db).reduce((a,v)=>a+v,0) / 2;
+      const midAvg    = bands.filter(b=>['500Hz','1kHz'].includes(b.label)).map(b=>b.db).reduce((a,v)=>a+v,0) / 2;
+      const highAvg   = bands.filter(b=>['4kHz','8kHz'].includes(b.label)).filter(b=>b.db>-115).map(b=>b.db);
+      const highMean  = highAvg.length ? highAvg.reduce((a,v)=>a+v,0)/highAvg.length : null;
 
-    if (bassRelative > -30) {
-      notes.push('Strong low-frequency energy at 63 Hz octave — corner bass buildup likely (room mode).');
-      recs.push('Place a broadband bass trap (minimum 4" rockwool) in this corner to absorb sub-100 Hz energy.');
-      score -= 8;
-    }
-    if (highRelative > -25) {
-      notes.push('Elevated high-frequency energy (8 kHz band) — possible hard reflective surface nearby.');
-      recs.push('Check for nearby glass, tile, or bare concrete. Add diffusion or absorption at first reflection point.');
-      score -= 4;
-    }
+      const bassTilt  = bassAvg - midAvg;   // positive = bass heavy
+      const highTilt  = highMean !== null ? highMean - midAvg : null;
 
-    // Spectral balance
-    const bandVals = bands.map(b => b.db).filter(v => v > -115);
-    if (bandVals.length > 2) {
-      const bMin = Math.min(...bandVals), bMax = Math.max(...bandVals);
-      const spectralRange = bMax - bMin;
-      if (spectralRange < 15) {
-        notes.push('Spectral balance is relatively flat across octave bands (' + spectralRange.toFixed(1) + ' dB spread) — good broadband response.');
-      } else if (spectralRange > 30) {
-        notes.push('Large spectral imbalance (' + spectralRange.toFixed(1) + ' dB across octave bands). Room is coloring the sound significantly at this position.');
+      // Spectral spread (how uneven are the bands)
+      const allVals = validBands.map(b=>b.db);
+      const bMin = Math.min(...allVals), bMax = Math.max(...allVals);
+      const spread = bMax - bMin;
+
+      if (bassTilt > 12) {
+        notes.push('Strong bass emphasis at this position (low bands ' + bassTilt.toFixed(1) + ' dB above mids). Classic corner bass buildup — room mode accumulation below 200 Hz.');
+        recs.push('Place a broadband bass trap (min 100mm rockwool or equivalent) directly in this corner. Floor-to-ceiling treatment is most effective.');
+        score -= 10;
+      } else if (bassTilt > 6) {
+        notes.push('Mild bass buildup (low bands ' + bassTilt.toFixed(1) + ' dB above mids). Some corner reinforcement present.');
+        recs.push('A corner bass trap here would reduce low-frequency coloration. Even a large sofa or bookcase helps.');
+        score -= 5;
+      } else if (bassTilt < -8) {
+        notes.push('Bass-deficient spectrum at this position (mids ' + Math.abs(bassTilt).toFixed(1) + ' dB above lows). May be sitting at a bass null — destructive interference zone.');
+        recs.push('This position may be a standing wave null. Move 0.5–1m toward the nearest wall and re-measure.');
         score -= 6;
+      } else {
+        notes.push('Bass-to-mid balance is even (tilt: ' + (bassTilt > 0 ? '+' : '') + bassTilt.toFixed(1) + ' dB). No significant corner buildup at this position.');
+        score += 4;
+      }
+
+      if (highTilt !== null && highTilt > 8) {
+        notes.push('Elevated high-frequency energy (' + highTilt.toFixed(1) + ' dB above mids). Hard reflective surface nearby is scattering HF energy toward this point.');
+        recs.push('Check for bare glass, tile, or smooth concrete within 2m. Add diffusion (bookshelf, acoustic panel) at the first reflection point.');
+        score -= 6;
+      } else if (highTilt !== null && highTilt < -15) {
+        notes.push('Strong high-frequency roll-off (' + Math.abs(highTilt).toFixed(1) + ' dB below mids). Heavy soft furnishing absorption or distance from source.');
+      }
+
+      if (spread > 35) {
+        notes.push('Large spectral spread across octave bands (' + spread.toFixed(1) + ' dB). This room position is heavily colored — it amplifies some frequencies and kills others.');
+        score -= 7;
+      } else if (spread < 18) {
+        notes.push('Spectrally balanced position (' + spread.toFixed(1) + ' dB spread across all bands). Room is adding minimal coloration here.');
+        score += 5;
       }
     }
   }
 
-  if (avg < 40 && variance < 5) recs.push('This is an acoustically excellent position. Use as primary recording or listening spot.');
-  if (avg > 60) recs.push('Add broadband absorption (panels, curtains, foam) to at least two reflective surfaces visible from this point.');
-  if (avg > 70) recs.push('Check for airborne noise paths: gaps under doors, thin windows, unlined ventilation ducts.');
-  if (!recs.length) recs.push('Position shows acceptable acoustic behavior. Minor diffusion (bookshelves, objects) could further smooth the response.');
+  // ── CROSS-POSITION COMPARISON (if other spots exist) ──────────────────────
+  if (allSpots && allSpots.length > 1) {
+    const others = allSpots.filter(s => s.id !== spot.id);
+    const otherAvgs = others.map(s => s.avg);
+    const roomMean = allSpots.map(s=>s.avg).reduce((a,b)=>a+b,0) / allSpots.length;
+    const deviation = avg - roomMean;
+    if (deviation < -4) {
+      notes.push('This position is ' + Math.abs(deviation).toFixed(1) + ' dB quieter than the room average — it is the best acoustic position measured.');
+      score += 5;
+    } else if (deviation > 4) {
+      notes.push('This position is ' + deviation.toFixed(1) + ' dB louder than the room average — acoustically the weakest position measured.');
+      score -= 5;
+    }
+  }
 
-  return { verdict, notes, recs, score: Math.max(5, Math.min(100, score)) };
+  // ── RECOMMENDATIONS FALLBACK ──────────────────────────
+  if (avg < 42 && variance < 6) {
+    recs.push('Excellent position — prioritise this spot for critical listening, recording, or microphone placement.');
+  }
+  if (avg > 55 && !recs.some(r=>r.includes('absorption'))) {
+    recs.push('Add broadband absorption (thick curtains, acoustic panels, bookshelves) to at least two reflective surfaces visible from this point.');
+  }
+  if (avg > 70) {
+    recs.push('Check for airborne noise paths: gaps under doors, thin windows, unlined ventilation ducts.');
+  }
+  if (!recs.length) {
+    recs.push('Position shows acceptable acoustic behaviour. Minor diffusion (scattered objects, bookshelves) could further smooth frequency response.');
+  }
+
+  return { verdict, notes, recs, score: Math.max(5, Math.min(100, Math.round(score))) };
 }
 
 function roomSummary(spots) {
@@ -890,6 +956,35 @@ function roomSummary(spots) {
   });
   if (bassBuildup.length > 1)
     findings.push(bassBuildup.length + ' positions show corner bass buildup. Room has prominent low-frequency modes — bass traps in corners strongly recommended.');
+
+  // Spectral comparison: find which spot has most bass buildup
+  if (spots.length > 1) {
+    const bassScores = spots.map(sp => {
+      if (!sp.bands) return null;
+      const bass = sp.bands.filter(b=>['63Hz','125Hz'].includes(b.label)).map(b=>b.db);
+      const mid  = sp.bands.filter(b=>['500Hz','1kHz'].includes(b.label)).map(b=>b.db);
+      if (!bass.length || !mid.length) return null;
+      const bAvg = bass.reduce((a,v)=>a+v,0)/bass.length;
+      const mAvg = mid.reduce((a,v)=>a+v,0)/mid.length;
+      return { name: sp.name, tilt: bAvg - mAvg };
+    }).filter(Boolean);
+
+    if (bassScores.length > 1) {
+      const mostBass = bassScores.reduce((a,b)=>a.tilt>b.tilt?a:b);
+      const leastBass = bassScores.reduce((a,b)=>a.tilt<b.tilt?a:b);
+      if (mostBass.tilt - leastBass.tilt > 8) {
+        findings.push('Spectral comparison: ' + mostBass.name + ' has the most bass buildup (low-frequency tilt +' + mostBass.tilt.toFixed(1) + ' dB vs mids). ' + leastBass.name + ' is the most spectrally balanced position.');
+      }
+    }
+
+    // Variance comparison
+    const varScores = spots.map(sp => ({ name: sp.name, v: sp.variance }));
+    const mostStable = varScores.reduce((a,b)=>a.v<b.v?a:b);
+    const leastStable = varScores.reduce((a,b)=>a.v>b.v?a:b);
+    if (leastStable.v - mostStable.v > 4) {
+      findings.push('Stability comparison: ' + mostStable.name + ' is the most temporally stable (±' + mostStable.v.toFixed(1) + ' dB). ' + leastStable.name + ' shows most instability (±' + leastStable.v.toFixed(1) + ' dB).');
+    }
+  }
 
   return findings;
 }
@@ -1033,7 +1128,7 @@ function renderAnalysis() {
     </div>` : ''}
 
     ${spots.map((sp, idx) => {
-      const { verdict, notes, recs, score } = assessSpot(sp);
+      const { verdict, notes, recs, score } = assessSpot(sp, spots);
       const open = expandState[sp.id] !== false;
       const scoreCol = score>70?'var(--green)':score>45?'var(--amber)':'var(--red)';
       const stabPct = Math.max(5,100-sp.variance*4);
