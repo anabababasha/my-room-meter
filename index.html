@@ -236,6 +236,36 @@
       box-shadow: 0 0 14px rgba(57, 255, 122, 0.8);
     }
 
+    .mic-tools {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .cal-button {
+      min-height: 34px;
+      padding: 6px 10px;
+      color: var(--blue);
+      background: rgba(79, 195, 247, 0.08);
+      border: 1px solid rgba(79, 195, 247, 0.38);
+      border-radius: var(--radius);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .cal-badge {
+      min-height: 30px;
+      padding: 5px 8px;
+      color: var(--purple);
+      background: rgba(192, 132, 252, 0.1);
+      border: 1px solid rgba(192, 132, 252, 0.36);
+      border-radius: 999px;
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 13px;
+    }
+
     .readout-wrap {
       display: grid;
       gap: 10px;
@@ -626,6 +656,44 @@
       height: 260px;
     }
 
+    .comparison-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .comparison-table {
+      width: 100%;
+      min-width: 640px;
+      border-collapse: collapse;
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 14px;
+    }
+
+    table[data-compare-table] th,
+    table[data-compare-table] td {
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    table[data-compare-table] th button {
+      padding: 0;
+      color: var(--text-dim);
+      background: transparent;
+      border: 0;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    table[data-compare-table] tr[data-best="true"] {
+      border-left: 3px solid var(--green);
+    }
+
+    table[data-compare-table] tr[data-worst="true"] {
+      border-left: 3px solid var(--red);
+    }
+
     .findings-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -680,8 +748,8 @@
     }
 
     .report-card-head {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       align-items: center;
       width: 100%;
@@ -700,6 +768,7 @@
 
     .report-name {
       min-width: 0;
+      flex: 1 1 130px;
       color: var(--text);
       font-size: 20px;
       font-weight: 700;
@@ -717,6 +786,13 @@
       color: var(--text-dim);
       font-family: "Share Tech Mono", "Courier New", monospace;
       font-size: 16px;
+      white-space: nowrap;
+    }
+
+    .report-nc {
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 700;
       white-space: nowrap;
     }
 
@@ -887,11 +963,15 @@
       <div class="panel meter-core">
         <div class="control-row">
           <button id="startStopBtn" class="primary-button" type="button">Start</button>
-          <div id="micPill" class="mic-pill" data-active="false"><span class="status-dot" data-status-dot></span><span>Mic inactive</span></div>
+          <div class="mic-tools">
+            <div id="micPill" class="mic-pill" data-active="false"><span class="status-dot" data-status-dot></span><span>Mic inactive</span></div>
+            <button id="calBtn" class="cal-button" type="button">CAL</button>
+            <div id="calBadge" class="cal-badge" hidden>CAL +0.0 dB</div>
+          </div>
         </div>
 
         <div class="readout-wrap">
-          <div id="dbReadout" class="db-readout"><span id="dbValue">—</span><span class="db-unit">dB SPL</span></div>
+          <div id="dbReadout" class="db-readout"><span id="dbValue">—</span><span class="db-unit">dBA</span></div>
           <div class="level-bar" aria-hidden="true"><div id="levelPin" class="level-pin"></div></div>
           <div id="envBadge" class="env-badge"><span id="envDot" class="pulse-dot"></span><span id="envText">Silence</span></div>
         </div>
@@ -950,6 +1030,20 @@
     const DB_MAX = 120;
     const FFT_MIN_DB = -120;
     const FFT_MAX_DB = 0;
+    const A_WEIGHT_1K = aWeightLinear(1000);
+    const NC_CURVES = [
+      { rating: 15, limits: [47, 36, 29, 22, 17, 14, 12, 11], label: "Recording studio" },
+      { rating: 20, limits: [51, 40, 33, 26, 22, 19, 17, 16], label: "Concert hall" },
+      { rating: 25, limits: [54, 44, 37, 31, 27, 24, 22, 21], label: "Bedroom, library" },
+      { rating: 30, limits: [57, 48, 41, 35, 31, 29, 28, 27], label: "Private office" },
+      { rating: 35, limits: [60, 52, 45, 40, 36, 34, 33, 32], label: "Conference room" },
+      { rating: 40, limits: [64, 56, 50, 45, 41, 39, 38, 37], label: "Open office / classroom" },
+      { rating: 45, limits: [67, 60, 54, 49, 46, 44, 43, 42], label: "Restaurant" },
+      { rating: 50, limits: [71, 64, 58, 54, 51, 49, 48, 47], label: "Retail store" },
+      { rating: 55, limits: [74, 67, 62, 58, 56, 54, 53, 52], label: "Retail store" },
+      { rating: 60, limits: [77, 71, 67, 63, 61, 59, 58, 57], label: "Factory floor" },
+      { rating: 65, limits: [80, 75, 71, 68, 66, 64, 63, 62], label: "Factory floor" }
+    ];
 
     const STATE = {
       running: false,
@@ -962,12 +1056,16 @@
       acc: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
       history: [],
       spots: [],
-      expandedCards: {}
+      expandedCards: {},
+      calOffset: loadCalibration(),
+      tableSort: { key: "score", dir: "desc" }
     };
 
     const els = {
       startStopBtn: document.getElementById("startStopBtn"),
       micPill: document.getElementById("micPill"),
+      calBtn: document.getElementById("calBtn"),
+      calBadge: document.getElementById("calBadge"),
       dbReadout: document.getElementById("dbReadout"),
       dbValue: document.getElementById("dbValue"),
       levelPin: document.getElementById("levelPin"),
@@ -998,6 +1096,7 @@
     resizeVisuals();
 
     els.startStopBtn.addEventListener("click", toggleAudio);
+    els.calBtn.addEventListener("click", calibrateMeter);
     els.captureBtn.addEventListener("click", captureSpot);
     els.clearAllBtn.addEventListener("click", clearAllSpots);
     els.bandsGrid.addEventListener("click", toggleBands);
@@ -1044,6 +1143,12 @@
       const toggleButton = event.target.closest("[data-toggle-card]");
       const sectionButton = event.target.closest("[data-section-tab]");
       const readMoreButton = event.target.closest("[data-read-assessment]");
+      const sortButton = event.target.closest("[data-sort-key]");
+      if (sortButton) {
+        setTableSort(sortButton.dataset.sortKey);
+        renderAnalysis();
+        return;
+      }
       if (toggleButton) {
         const id = Number(toggleButton.dataset.toggleCard);
         const key = `report-${id}`;
@@ -1152,7 +1257,8 @@
         sumSquares += timeBuf[i] * timeBuf[i];
       }
       const rms = Math.sqrt(sumSquares / timeBuf.length);
-      return Math.max(0, 20 * Math.log10(rms) + 90);
+      const rawDb = Math.max(0, 20 * Math.log10(rms) + 90);
+      return Math.max(0, rawDb + STATE.calOffset);
     }
 
     function updateAccumulator(db) {
@@ -1208,6 +1314,51 @@
       renderAll();
     }
 
+    function calibrateMeter() {
+      const latest = STATE.history.length ? STATE.history[STATE.history.length - 1] : NaN;
+      if (!Number.isFinite(latest)) {
+        alert("Start the microphone and wait for a reading before calibration.");
+        return;
+      }
+      const input = prompt("Enter reference dB from calibrated meter:", latest.toFixed(1));
+      if (input === null) return;
+      const reference = Number(input);
+      if (!Number.isFinite(reference)) return;
+      const rawReading = latest - STATE.calOffset;
+      const nextOffset = reference - rawReading;
+      const delta = nextOffset - STATE.calOffset;
+      STATE.calOffset = nextOffset;
+      localStorage.setItem("roomAcoMeter.calOffset", String(nextOffset));
+      applyCalibrationDelta(delta);
+      renderAll();
+      drawHistory();
+      drawSpectrum(STATE.fftBuf);
+    }
+
+    function applyCalibrationDelta(delta) {
+      if (!Number.isFinite(delta) || Math.abs(delta) < 0.0001) return;
+      STATE.history = STATE.history.map((value) => Math.max(0, value + delta));
+      if (STATE.acc.count) {
+        STATE.acc.min = Math.max(0, STATE.acc.min + delta);
+        STATE.acc.max = Math.max(0, STATE.acc.max + delta);
+        STATE.acc.sum += delta * STATE.acc.count;
+      }
+      STATE.spots.forEach((spot) => {
+        spot.avg = Math.max(0, spot.avg + delta);
+        spot.min = Math.max(0, spot.min + delta);
+        spot.max = Math.max(0, spot.max + delta);
+        spot.bands.forEach((band) => {
+          band.absDb = Math.max(0, band.absDb + delta);
+        });
+      });
+    }
+
+    function renderCalibrationBadge() {
+      const active = Math.abs(STATE.calOffset) >= 0.05;
+      els.calBadge.hidden = !active;
+      els.calBadge.textContent = `CAL ${signed(STATE.calOffset)} dB`;
+    }
+
     function getCurrentAverage() {
       return STATE.acc.count ? STATE.acc.sum / STATE.acc.count : 0;
     }
@@ -1227,7 +1378,7 @@
       if (!fftValues || !fftValues.length) {
         return BANDS.map((center) => ({ label: formatBandLabel(center), relDb: 0, absDb: currentAvg }));
       }
-      const rawBandDb = BANDS.map((center) => calculateBandDb(fftValues, center));
+      const rawBandDb = BANDS.map((center) => getBandDb(fftValues, center));
       const usable = rawBandDb.filter(Number.isFinite);
       const reference = usable.length ? usable.reduce((sum, value) => sum + value, 0) / usable.length : 0;
       return BANDS.map((center, index) => {
@@ -1241,7 +1392,7 @@
       });
     }
 
-    function calculateBandDb(fftValues, center) {
+    function getBandDb(fftValues, center) {
       const sampleRate = STATE.audioCtx ? STATE.audioCtx.sampleRate : 48000;
       const binHz = sampleRate / 4096;
       const low = center / Math.SQRT2;
@@ -1250,7 +1401,7 @@
       for (let i = 0; i < fftValues.length; i += 1) {
         const frequency = i * binHz;
         if (frequency >= low && frequency <= high) {
-          power += Math.pow(10, fftValues[i] / 10);
+          power += Math.pow(10, (fftValues[i] + aWeightDb(frequency)) / 10);
         }
       }
       return power > 0 ? 10 * Math.log10(power) : -120;
@@ -1270,6 +1421,7 @@
       els.micPill.dataset.active = String(STATE.running);
       els.micPill.querySelector("span:last-child").textContent = STATE.running ? "Mic active" : "Mic inactive";
       els.captureBtn.disabled = !STATE.running || STATE.acc.count === 0;
+      renderCalibrationBadge();
     }
 
     function renderMeter(db) {
@@ -1383,6 +1535,7 @@
         renderReportHeader(reportTime),
         STATE.spots.length > 1 ? renderComparisonSection() : "",
         STATE.spots.length > 1 ? renderOverviewFindings() : "",
+        renderComparisonTable(),
         STATE.spots.map((spot, index) => renderReportCard(spot, index, STATE.spots)).join("")
       ];
       els.analysisContent.innerHTML = sections.join("");
@@ -1437,16 +1590,92 @@
       `;
     }
 
+    function renderComparisonTable() {
+      const rows = STATE.spots.map((spot, index) => {
+        const assessment = assessSpot(spot, STATE.spots);
+        const nc = getNcRating(spot);
+        return {
+          spot,
+          index,
+          avg: spot.avg,
+          nc: nc.numeric,
+          ncText: nc.display,
+          bassTilt: getBassTilt(spot),
+          score: assessment.score
+        };
+      });
+      const sorted = rows.slice().sort((a, b) => compareRows(a, b));
+      const best = rows.reduce((winner, row) => row.score > winner.score ? row : winner, rows[0]);
+      const worst = rows.reduce((loser, row) => row.score < loser.score ? row : loser, rows[0]);
+      return `
+        <section class="panel">
+          <h2 class="section-title">Comparison Table</h2>
+          <div class="comparison-table-wrap">
+            <table class="comparison-table" data-compare-table>
+              <thead>
+                <tr>
+                  ${tableHead("#", "index")}
+                  ${tableHead("Name", "name")}
+                  ${tableHead("Avg dBA", "avg")}
+                  ${tableHead("NC", "nc")}
+                  ${tableHead("Bass Tilt", "bassTilt")}
+                  ${tableHead("Score", "score")}
+                </tr>
+              </thead>
+              <tbody>
+                ${sorted.map((row) => `
+                  <tr data-best="${row.spot.id === best.spot.id}" data-worst="${STATE.spots.length > 1 && row.spot.id === worst.spot.id}">
+                    <td>${String(row.index + 1).padStart(2, "0")}</td>
+                    <td>${escapeHtml(row.spot.name)}</td>
+                    <td>${row.avg.toFixed(1)}</td>
+                    <td>${escapeHtml(row.ncText)}</td>
+                    <td>${signed(row.bassTilt)} dB</td>
+                    <td>${row.score}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      `;
+    }
+
+    function tableHead(label, key) {
+      const active = STATE.tableSort.key === key;
+      const arrow = active ? (STATE.tableSort.dir === "asc" ? " ↑" : " ↓") : "";
+      return `<th><button type="button" data-sort-key="${key}">${label}${arrow}</button></th>`;
+    }
+
+    function compareRows(a, b) {
+      const key = STATE.tableSort.key;
+      const dir = STATE.tableSort.dir === "asc" ? 1 : -1;
+      if (key === "name") {
+        return a.spot.name.localeCompare(b.spot.name) * dir;
+      }
+      return (a[key] - b[key]) * dir;
+    }
+
+    function setTableSort(key) {
+      if (STATE.tableSort.key === key) {
+        STATE.tableSort.dir = STATE.tableSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        STATE.tableSort.key = key;
+        STATE.tableSort.dir = key === "name" || key === "index" ? "asc" : "desc";
+      }
+    }
+
     function renderReportCard(spot, index, allSpots) {
       const assessment = assessSpot(spot, allSpots);
       const open = STATE.expandedCards[`report-${spot.id}`] === true;
       const qualityColor = qualityColorForScore(assessment.score);
+      const nc = getNcRating(spot);
       return `
         <article class="report-card">
           <button class="report-card-head" type="button" data-toggle-card="${spot.id}" aria-expanded="${open}">
             <div class="spot-index">${String(index + 1).padStart(2, "0")}</div>
             <div class="report-name">${escapeHtml(spot.name)}</div>
-            <div class="report-avg" style="color:${levelColor(spot.avg)}">${spot.avg.toFixed(1)} dB</div>
+            <div class="report-avg" style="color:${levelColor(spot.avg)}">${spot.avg.toFixed(1)} dBA</div>
+            <div class="report-nc">${escapeHtml(nc.display)} — ${escapeHtml(nc.label)}</div>
             <div class="report-score">Score: ${assessment.score}</div>
             <div class="collapse-arrow">${open ? "▲" : "▼"}</div>
           </button>
@@ -1687,6 +1916,25 @@
       const bassAvg = mean([spot.bands[0].absDb, spot.bands[1].absDb]);
       const midAvg = mean([spot.bands[3].absDb, spot.bands[4].absDb]);
       return bassAvg - midAvg;
+    }
+
+    function getNcRating(spot) {
+      const values = spot.bands.map((band) => band.absDb);
+      for (const curve of NC_CURVES) {
+        const fits = values.every((value, index) => value <= curve.limits[index]);
+        if (fits) {
+          return {
+            numeric: curve.rating,
+            display: `NC-${curve.rating}`,
+            label: curve.label
+          };
+        }
+      }
+      return {
+        numeric: 65,
+        display: "NC-65+",
+        label: "Factory floor"
+      };
     }
 
     function drawHistory() {
@@ -1961,6 +2209,29 @@
       link.rel = "manifest";
       link.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
       document.head.append(link);
+    }
+
+    function loadCalibration() {
+      try {
+        const stored = Number(localStorage.getItem("roomAcoMeter.calOffset"));
+        return Number.isFinite(stored) ? stored : 0;
+      } catch (error) {
+        return 0;
+      }
+    }
+
+    function aWeightLinear(frequency) {
+      const f2 = frequency * frequency;
+      const numerator = Math.pow(12194, 2) * Math.pow(frequency, 4);
+      const denominator = (f2 + Math.pow(20.6, 2)) *
+        Math.sqrt((f2 + Math.pow(107.7, 2)) * (f2 + Math.pow(737.9, 2))) *
+        (f2 + Math.pow(12194, 2));
+      return numerator / denominator;
+    }
+
+    function aWeightDb(frequency) {
+      if (!Number.isFinite(frequency) || frequency <= 0) return -120;
+      return 20 * Math.log10(aWeightLinear(frequency) / A_WEIGHT_1K);
     }
 
     function levelColor(db) {
