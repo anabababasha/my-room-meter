@@ -1,1228 +1,2013 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="theme-color" content="#080a0c"/>
-<title>Room Acoustic Meter</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080a0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Room Aco Meter">
+  <title>ROOM·ACO·METER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080a0c;
+      --surface: #0d1117;
+      --panel: #111820;
+      --border: #1e2d3d;
+      --amber: #f5a623;
+      --green: #39ff7a;
+      --red: #ff3b3b;
+      --blue: #4fc3f7;
+      --purple: #c084fc;
+      --text: #c9d1d9;
+      --text-dim: #556070;
+      --black: #050607;
+      --radius: 8px;
+      --shadow: 0 0 28px rgba(245, 166, 35, 0.13);
+      color-scheme: dark;
+    }
 
-  :root {
-    --bg: #080a0c;
-    --surface: #0d1117;
-    --panel: #111820;
-    --border: #1e2d3d;
-    --amber: #f5a623;
-    --amber-dim: #7a5312;
-    --amber-glow: rgba(245,166,35,0.15);
-    --green: #39ff7a;
-    --red: #ff3b3b;
-    --blue: #4fc3f7;
-    --purple: #c084fc;
-    --text: #c9d1d9;
-    --text-dim: #556070;
-    --mono: 'Share Tech Mono', 'Courier New', monospace;
-    --ui: 'Rajdhani', sans-serif;
-  }
+    * {
+      box-sizing: border-box;
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--ui);
-    min-height: 100vh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
+    body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(17, 24, 32, 0.92), rgba(8, 10, 12, 1) 360px),
+        var(--bg);
+      color: var(--text);
+      font-family: Rajdhani, "Courier New", sans-serif;
+      letter-spacing: 0;
+    }
 
-  /* ── HEADER ── */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .logo { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: 0.1em; }
-  .logo span { color: var(--text-dim); }
-  .tabs { display: flex; gap: 3px; }
-  .tab {
-    font-family: var(--ui); font-size: 11px; font-weight: 700;
-    letter-spacing: 0.1em; padding: 6px 12px;
-    border: 1px solid var(--border); background: transparent;
-    color: var(--text-dim); cursor: pointer; border-radius: 3px;
-    text-transform: uppercase; transition: all 0.15s;
-  }
-  .tab.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber); }
+    button,
+    input {
+      font: inherit;
+    }
 
-  /* ── VIEWS ── */
-  .view { display: none; padding: 14px 14px 32px; flex-direction: column; gap: 12px; }
-  .view.active { display: flex; }
+    button {
+      cursor: pointer;
+    }
 
-  /* ── BLOCKS ── */
-  .block {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .block-head {
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .block-title { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase; }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
 
-  /* ── MAIN READOUT ── */
-  .readout {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 20px 16px 16px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .readout::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--amber), transparent);
-  }
-  .db-big { font-family: var(--mono); font-size: 68px; line-height: 1; color: var(--amber); text-shadow: 0 0 40px rgba(245,166,35,0.4); transition: color 0.15s, text-shadow 0.15s; }
-  .db-big.c-green { color: var(--green); text-shadow: 0 0 40px rgba(57,255,122,0.3); }
-  .db-big.c-red   { color: var(--red);   text-shadow: 0 0 40px rgba(255,59,59,0.4); }
-  .db-unit { font-family: var(--mono); font-size: 14px; color: var(--text-dim); letter-spacing: 0.2em; margin-top: 3px; }
-  .db-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 2px;
+    }
 
-  /* BAR */
-  .bar-wrap { margin: 14px 4px 0; }
-  .bar-track { height: 8px; background: #0a0e13; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.07s linear; background: linear-gradient(90deg,#39ff7a 0%,#f5a623 55%,#ff3b3b 100%); background-size:300px 8px; }
-  .bar-lbls { display: flex; justify-content: space-between; margin-top: 3px; }
-  .bar-lbls span { font-family: var(--mono); font-size: 8px; color: var(--text-dim); }
+    canvas {
+      display: block;
+      width: 100%;
+      background: #07090b;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
 
-  /* ENV BADGE */
-  .env-wrap { margin-top: 10px; }
-  .env-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 12px; border-radius: 20px; font-size: 11px;
-    font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid;
-  }
-  .env-silent { border-color:#39ff7a44;background:#39ff7a0d;color:var(--green); }
-  .env-quiet  { border-color:#4fc3f744;background:#4fc3f70d;color:var(--blue); }
-  .env-moderate{border-color:#f5a62344;background:#f5a6230d;color:var(--amber); }
-  .env-loud   { border-color:#ff8c0044;background:#ff8c000d;color:#ff8c00; }
-  .env-veryloud{border-color:#ff3b3b44;background:#ff3b3b0d;color:var(--red); }
-  .env-dot { width:6px;height:6px;border-radius:50%;background:currentColor;animation:pdot 1.2s ease-in-out infinite; }
-  @keyframes pdot{0%,100%{opacity:1}50%{opacity:0.25}}
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px max(16px, env(safe-area-inset-left)) 12px max(16px, env(safe-area-inset-right));
+      background: rgba(8, 10, 12, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
 
-  /* STATS ROW */
-  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; }
-  .stat { background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:10px 6px;text-align:center; }
-  .stat-lbl { font-size:9px;font-weight:700;letter-spacing:0.15em;color:var(--text-dim);text-transform:uppercase;margin-bottom:5px; }
-  .stat-val { font-family:var(--mono);font-size:18px; }
-  .s-min{color:var(--blue)} .s-avg{color:var(--amber)} .s-max{color:var(--red)} .s-var{color:var(--purple)}
+    .logo {
+      color: var(--amber);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 20px;
+      white-space: nowrap;
+      text-shadow: 0 0 18px rgba(245, 166, 35, 0.35);
+    }
 
-  /* CANVASES */
-  canvas { display:block;width:100%; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(88px, 1fr));
+      gap: 8px;
+      align-items: center;
+      flex: 0 1 250px;
+    }
 
-  /* CONTROLS */
-  .ctrl-row { display:flex;gap:8px;align-items:center;flex-wrap:wrap; }
-  .btn {
-    font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:0.1em;
-    text-transform:uppercase;padding:9px 18px;border-radius:4px;cursor:pointer;
-    border:1px solid;transition:all 0.15s;
-  }
-  .btn-start { background:var(--amber);color:#000;border-color:var(--amber); }
-  .btn-start:active { opacity:0.7; }
-  .btn-stop  { background:transparent;color:var(--red);border-color:#ff3b3b55; }
-  .btn-stop:hover { background:#ff3b3b11; }
-  .btn-outline{ background:transparent;color:var(--text-dim);border-color:var(--border); }
-  .btn-outline:hover{border-color:var(--amber);color:var(--amber);}
-  .btn-danger{ background:transparent;color:var(--red);border-color:#ff3b3b33;font-size:11px;padding:6px 12px; }
-  .btn:disabled{opacity:0.3;cursor:default;}
+    .tab {
+      min-height: 38px;
+      padding: 8px 14px;
+      color: var(--text-dim);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
 
-  /* MIC STATUS */
-  .mic-pill {
-    display:flex;align-items:center;gap:6px;padding:6px 12px;
-    border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.08em;
-  }
-  .mic-on{background:#39ff7a0d;color:var(--green);border:1px solid #39ff7a33;}
-  .mic-off{background:#ff3b3b0d;color:var(--red);border:1px solid #ff3b3b33;}
-  .mic-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
-  .mic-dot.on{animation:pdot 1s ease-in-out infinite;}
+    [data-current="true"] {
+      color: var(--amber);
+      border-color: var(--amber);
+      background: rgba(245, 166, 35, 0.12);
+      box-shadow: var(--shadow);
+    }
 
-  /* SPOT CAPTURE */
-  .cap-row{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);}
-  .spot-input {
-    flex:1;background:var(--panel);border:1px solid var(--border);border-radius:4px;
-    color:var(--text);font-family:var(--ui);font-size:14px;font-weight:500;
-    padding:8px 12px;outline:none;transition:border-color 0.15s;
-  }
-  .spot-input:focus{border-color:var(--amber);}
-  .spot-input::placeholder{color:var(--text-dim);}
-  .cap-btn{background:var(--amber);color:#000;border:none;border-radius:4px;font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:0.08em;padding:8px 14px;cursor:pointer;text-transform:uppercase;white-space:nowrap;}
-  .cap-btn:active{opacity:0.7;}
-  .cap-btn:disabled{opacity:0.3;cursor:default;}
+    .shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 22px 16px 150px;
+    }
 
-  /* SPOTS LIST */
-  .spots-wrap{padding:8px;} .spot-item{display:flex;align-items:center;gap:8px;padding:10px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:6px;background:var(--panel);}
-  .spot-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:5px;background:var(--panel);}
-  .spot-idx{font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:22px;}
-  .spot-info{flex:1;}
-  .spot-name-lbl{font-weight:600;font-size:14px;color:var(--text);}
-  .spot-meta{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;}
-  .spot-avg-pill{font-family:var(--mono);font-size:13px;font-weight:600;padding:3px 8px;border-radius:3px;background:var(--amber-glow);color:var(--amber);border:1px solid var(--amber-dim);}
-  .spot-rm{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:4px;transition:color 0.15s;}
-  .spot-rm:hover{color:var(--red);}
-  .no-spots{padding:22px;text-align:center;font-size:13px;color:var(--text-dim);line-height:1.8;}
+    .view {
+      display: grid;
+      gap: 22px;
+    }
 
-  /* FFT LABELS */
-  .fft-freq-labels{display:flex;justify-content:space-between;padding:2px 10px 6px;pointer-events:none;}
-  .fft-freq-labels span{font-family:var(--mono);font-size:8px;color:var(--text-dim);}
+    [data-visible="false"] {
+      display: none;
+    }
 
-  /* ERROR */
-  .err-box{background:#ff3b3b0d;border:1px solid #ff3b3b44;border-radius:5px;padding:10px 14px;font-size:13px;color:var(--red);}
+    .panel {
+      background: rgba(13, 17, 23, 0.92);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
 
-  /* ── ANALYSIS ── */
-  .analysis-hdr{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;position:relative;overflow:hidden;}
-  .analysis-hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--amber),var(--red));}
-  .analysis-hdr h2{font-size:17px;font-weight:700;letter-spacing:0.05em;margin-bottom:3px;}
-  .analysis-hdr p{font-size:11px;color:var(--text-dim);font-weight:500;}
+    .meter-core {
+      display: grid;
+      gap: 20px;
+    }
 
-  .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-  .summary-head{padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:0.15em;color:var(--text-dim);text-transform:uppercase;}
-  .summary-body{padding:12px 14px;}
-  .finding{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.7;color:var(--text);}
-  .finding:last-child{border-bottom:none;}
-  .finding-arr{color:var(--amber);font-weight:700;flex-shrink:0;margin-top:1px;}
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
-  .report-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-  .rc-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
-  .rc-title{display:flex;align-items:center;gap:9px;}
-  .rc-num{font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--panel);border:1px solid var(--border);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:3px;}
-  .rc-name{font-weight:700;font-size:14px;}
-  .rc-avg{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--amber);}
-  .arr{font-size:11px;color:var(--text-dim);transition:transform 0.2s;}
-  .arr.open{transform:rotate(180deg);}
-  .rc-body{padding:12px 14px;display:flex;flex-direction:column;gap:11px;}
+    .primary-button {
+      min-width: 132px;
+      min-height: 44px;
+      border: 1px solid var(--amber);
+      border-radius: var(--radius);
+      background: rgba(245, 166, 35, 0.14);
+      color: var(--amber);
+      font-weight: 700;
+      text-transform: uppercase;
+      box-shadow: var(--shadow);
+    }
 
-  .metrics-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;}
-  .mbox{text-align:center;padding:8px 4px;background:var(--panel);border-radius:4px;border:1px solid var(--border);}
-  .mlbl{font-size:8px;font-weight:700;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px;}
-  .mval{font-family:var(--mono);font-size:15px;}
+    .danger-button {
+      min-height: 38px;
+      border: 1px solid rgba(255, 59, 59, 0.8);
+      border-radius: var(--radius);
+      background: rgba(255, 59, 59, 0.1);
+      color: var(--red);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
 
-  .rating-row{margin-bottom:1px;}
-  .rating-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-  .rating-name{font-size:10px;font-weight:700;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;}
-  .rating-score{font-family:var(--mono);font-size:12px;color:var(--amber);}
-  .rbar-track{height:5px;background:var(--panel);border-radius:3px;border:1px solid var(--border);overflow:hidden;}
-  .rbar-fill{height:100%;border-radius:3px;transition:width 0.7s ease;}
+    .ghost-button {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17, 24, 32, 0.72);
+      color: var(--text);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
 
-  .assessment{background:var(--panel);border-radius:5px;border-left:3px solid var(--amber);padding:11px 13px;}
-  .assess-title{font-size:9px;font-weight:700;letter-spacing:0.15em;color:var(--amber);text-transform:uppercase;margin-bottom:7px;}
-  .assess-txt{font-size:12px;line-height:1.75;color:var(--text);}
-  .assess-sub{font-size:12px;line-height:1.75;color:var(--text);margin-top:7px;border-top:1px solid var(--border);padding-top:7px;}
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17, 24, 32, 0.85);
+      color: var(--text);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      line-height: 1;
+    }
 
-  .recs-title{font-size:9px;font-weight:700;letter-spacing:0.15em;color:var(--amber);text-transform:uppercase;margin-bottom:7px;}
-  .rec{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.65;color:var(--text);margin-bottom:5px;}
-  .rec-ico{color:var(--amber);font-size:11px;margin-top:2px;flex-shrink:0;}
+    .mic-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-dim);
+      background: rgba(17, 24, 32, 0.72);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
 
-  .fft-snap-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
-  .fft-snap-title{font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--border);}
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
 
-  .analysis-empty{text-align:center;padding:50px 24px;color:var(--text-dim);line-height:2;}
-  .analysis-empty h3{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;}
+    [data-active="true"] {
+      color: var(--green);
+      border-color: rgba(57, 255, 122, 0.45);
+    }
 
-  /* SPECTRAL BANDS */
-  .band-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:10px 14px;}
-  .band-box{text-align:center;padding:8px 3px;background:var(--panel);border-radius:4px;border:1px solid var(--border);}
-  .band-lbl{font-size:8px;font-weight:700;letter-spacing:0.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px;}
-  .band-val{font-family:var(--mono);font-size:12px;}
-  .band-bar-track{height:40px;background:#080a0c;border-radius:2px;overflow:hidden;display:flex;align-items:flex-end;margin-top:4px;}
-  .band-bar-fill{width:100%;border-radius:2px;transition:height 0.12s linear;}
-</style>
+    [data-active="true"] [data-status-dot] {
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(57, 255, 122, 0.8);
+    }
+
+    .readout-wrap {
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+      padding: 4px 0 0;
+    }
+
+    .db-readout {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      color: var(--green);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 78px;
+      line-height: 0.95;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .db-unit {
+      color: var(--text-dim);
+      font-family: Rajdhani, "Courier New", sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .level-bar {
+      position: relative;
+      width: 100%;
+      height: 18px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue) 0%, var(--green) 36%, var(--amber) 58%, var(--red) 100%);
+    }
+
+    .level-pin {
+      position: absolute;
+      top: -7px;
+      left: 0;
+      width: 3px;
+      height: 30px;
+      border-radius: 2px;
+      background: #fff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.65);
+      transform: translateX(-1px);
+    }
+
+    .env-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-self: center;
+      min-height: 34px;
+      padding: 6px 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(17, 24, 32, 0.8);
+      color: var(--text);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.25s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(57, 255, 122, 0.6); }
+      70% { box-shadow: 0 0 0 9px rgba(57, 255, 122, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(57, 255, 122, 0); }
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      width: 100%;
+      padding: 9px 10px;
+      background: rgba(17, 24, 32, 0.72);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .stat-box {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 5px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 15px;
+      line-height: 1.1;
+    }
+
+    .tone-blue {
+      color: var(--blue);
+    }
+
+    .tone-amber {
+      color: var(--amber);
+    }
+
+    .tone-red {
+      color: var(--red);
+    }
+
+    .tone-purple {
+      color: var(--purple);
+    }
+
+    .canvas-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .history-canvas {
+      height: 60px;
+    }
+
+    .spectrum-canvas {
+      height: 60px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .bands-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .band-box {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+      padding: 8px 6px;
+      background: rgba(17, 24, 32, 0.72);
+      border: 1px solid rgba(30, 45, 61, 0.85);
+      border-radius: var(--radius);
+      text-align: center;
+    }
+
+    .band-label {
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .band-track {
+      position: relative;
+      align-self: stretch;
+      width: 100%;
+      height: 9px;
+      margin: 0 auto;
+      border-radius: 999px;
+      background: #071018;
+      border: 1px solid rgba(201, 209, 217, 0.08);
+    }
+
+    .band-fill {
+      position: absolute;
+      left: 1px;
+      top: 1px;
+      bottom: 1px;
+      min-height: 3px;
+      min-width: 3px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .band-value {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 15px;
+    }
+
+    .bands-hint {
+      margin-top: 10px;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .capture-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 18;
+      padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+      background: rgba(8, 10, 12, 0.95);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+
+    .capture-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .capture-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    .name-input {
+      min-height: 44px;
+      width: 100%;
+      min-width: 0;
+      padding: 8px 11px;
+      color: var(--text);
+      background: #07090b;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    #sampleHint {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+
+    [data-ready="true"] {
+      color: var(--green);
+    }
+
+    .spots-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .spot-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .spot-index {
+      color: var(--amber);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 22px;
+    }
+
+    .spot-main {
+      min-width: 0;
+    }
+
+    .spot-name {
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .spot-meta {
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .spot-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      grid-column: 1 / -1;
+      margin-top: 2px;
+    }
+
+    .preview-pill {
+      padding: 4px 7px;
+      color: var(--text);
+      background: rgba(79, 195, 247, 0.08);
+      border: 1px solid rgba(79, 195, 247, 0.24);
+      border-radius: 999px;
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .spot-db {
+      min-width: 104px;
+      text-align: right;
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    .spot-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .clear-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+
+    .empty-state {
+      padding: 34px 16px;
+      color: var(--text-dim);
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .report-title {
+      margin: 0;
+      color: var(--amber);
+      font-size: 28px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .report-meta {
+      color: var(--text-dim);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .comparison-canvas {
+      height: 260px;
+    }
+
+    .findings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .finding-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .finding-box {
+      min-width: 0;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .finding-item {
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .finding-label {
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .finding-value {
+      margin-top: 5px;
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .report-card {
+      background: rgba(13, 17, 23, 0.92);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .report-card-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 0;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .report-card-body {
+      display: grid;
+      gap: 14px;
+      padding: 0 12px 14px;
+    }
+
+    .report-name {
+      min-width: 0;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .report-avg {
+      color: var(--amber);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 28px;
+      white-space: nowrap;
+    }
+
+    .report-score {
+      color: var(--text-dim);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 16px;
+      white-space: nowrap;
+    }
+
+    .collapse-arrow {
+      color: var(--text-dim);
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 18px;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+      gap: 8px;
+    }
+
+    .section-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .section-tab {
+      min-height: 36px;
+      padding: 7px 8px;
+      color: var(--text-dim);
+      background: rgba(17, 24, 32, 0.72);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    [data-section-active="true"] {
+      color: var(--amber);
+      border-color: rgba(245, 166, 35, 0.8);
+      background: rgba(245, 166, 35, 0.12);
+    }
+
+    .metric-tile {
+      min-width: 0;
+      padding: 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .metric-label {
+      color: var(--text-dim);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 20px;
+    }
+
+    .band-values-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+      gap: 8px;
+    }
+
+    .band-value-box {
+      min-width: 0;
+      padding: 9px 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+    }
+
+    .score-wrap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .score-line {
+      display: grid;
+      gap: 6px;
+    }
+
+    .score-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .score-bar {
+      height: 12px;
+      background: #07090b;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    .score-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: var(--amber);
+    }
+
+    .assessment {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(245, 166, 35, 0.06);
+      border-left: 3px solid var(--amber);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .assessment-line {
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .assessment-more {
+      justify-self: start;
+      min-height: 32px;
+      padding: 5px 9px;
+      color: var(--amber);
+      background: rgba(245, 166, 35, 0.1);
+      border: 1px solid rgba(245, 166, 35, 0.45);
+      border-radius: var(--radius);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .recommendations {
+      display: grid;
+      gap: 7px;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .recommendation {
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .snapshot-canvas {
+      height: 70px;
+    }
+
+    .mobile-stack {
+      min-width: 0;
+    }
+  </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="logo">ROOM·ACO·METER</div>
+    <nav class="tabs" aria-label="App views">
+      <button class="tab" type="button" data-tab="meter" data-current="true">Meter</button>
+      <button class="tab" type="button" data-tab="analysis" data-current="false">Analysis</button>
+    </nav>
+  </header>
 
-<div class="header">
-  <div class="logo">ROOM<span>·</span>ACO<span>·</span>METER</div>
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('meter')">METER</button>
-    <button class="tab" id="tab-analysis" onclick="switchTab('analysis')">ANALYSIS</button>
-  </div>
-</div>
+  <main class="shell">
+    <section id="meterPanel" class="view" data-visible="true" aria-label="Meter">
+      <div class="panel meter-core">
+        <div class="control-row">
+          <button id="startStopBtn" class="primary-button" type="button">Start</button>
+          <div id="micPill" class="mic-pill" data-active="false"><span class="status-dot" data-status-dot></span><span>Mic inactive</span></div>
+        </div>
 
-<!-- ═══════════════ METER VIEW ═══════════════ -->
-<div class="view active" id="view-meter">
+        <div class="readout-wrap">
+          <div id="dbReadout" class="db-readout"><span id="dbValue">—</span><span class="db-unit">dB SPL</span></div>
+          <div class="level-bar" aria-hidden="true"><div id="levelPin" class="level-pin"></div></div>
+          <div id="envBadge" class="env-badge"><span id="envDot" class="pulse-dot"></span><span id="envText">Silence</span></div>
+        </div>
 
-  <!-- Controls -->
-  <div class="ctrl-row">
-    <button class="btn btn-start" id="btn-start" onclick="startMic()">▶ START</button>
-    <button class="btn btn-stop" id="btn-stop" onclick="stopMic()" style="display:none">■ STOP</button>
-    <div class="mic-pill mic-off" id="mic-pill">
-      <div class="mic-dot" id="mic-dot"></div>
-      <span id="mic-label">MIC OFF</span>
-    </div>
-  </div>
+        <div class="stats-row">
+          <div class="stat-box"><span class="stat-label">MIN</span><span id="statMin" class="stat-value tone-blue">—</span></div>
+          <div class="stat-box"><span class="stat-label">AVG</span><span id="statAvg" class="stat-value tone-amber">—</span></div>
+          <div class="stat-box"><span class="stat-label">MAX</span><span id="statMax" class="stat-value tone-red">—</span></div>
+          <div class="stat-box"><span class="stat-label">±</span><span id="statVar" class="stat-value tone-purple">—</span></div>
+        </div>
 
-  <div id="err-box" class="err-box" style="display:none"></div>
+        <div>
+          <div class="canvas-title"><span>Level history</span><span>rolling 300 samples</span></div>
+          <canvas id="historyCanvas" class="history-canvas" height="60" aria-label="Level history waveform"></canvas>
+        </div>
 
-  <!-- Main Readout -->
-  <div class="readout">
-    <div class="db-sub">SOUND PRESSURE LEVEL</div>
-    <div class="db-big" id="db-big">0.0</div>
-    <div class="db-unit">dB SPL</div>
-    <div class="bar-wrap">
-      <div class="bar-track"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
-      <div class="bar-lbls"><span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span><span>120</span></div>
-    </div>
-    <div class="env-wrap"><span class="env-badge env-silent" id="env-badge"><span class="env-dot"></span><span id="env-text">Silence</span></span></div>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat"><div class="stat-lbl">MIN</div><div class="stat-val s-min" id="s-min">—</div></div>
-    <div class="stat"><div class="stat-lbl">AVG</div><div class="stat-val s-avg" id="s-avg">—</div></div>
-    <div class="stat"><div class="stat-lbl">MAX</div><div class="stat-val s-max" id="s-max">—</div></div>
-    <div class="stat"><div class="stat-lbl">±VAR</div><div class="stat-val s-var" id="s-var">—</div></div>
-  </div>
-
-  <!-- Waveform -->
-  <div class="block">
-    <div class="block-head">
-      <span class="block-title">LEVEL HISTORY</span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim)" id="hist-count">0 pts</span>
-    </div>
-    <canvas id="wave-canvas" height="70"></canvas>
-  </div>
-
-  <!-- FFT Spectrum -->
-  <div class="block">
-    <div class="block-head">
-      <span class="block-title">FFT SPECTRUM</span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim)">REAL-TIME</span>
-    </div>
-    <canvas id="fft-canvas" height="110"></canvas>
-    <div class="fft-freq-labels">
-      <span>20</span><span>50</span><span>100</span><span>200</span><span>500</span><span>1k</span><span>2k</span><span>5k</span><span>10k</span><span>20k</span>
-    </div>
-  </div>
-
-  <!-- Octave Bands -->
-  <div class="block">
-    <div class="block-head"><span class="block-title">OCTAVE BANDS (dB)</span></div>
-    <div class="band-grid" id="band-grid">
-      <!-- filled by JS -->
-    </div>
-  </div>
-
-  <!-- Spot Capture -->
-  <div class="block">
-    <div class="block-head">
-      <span class="block-title">ROOM POSITIONS</span>
-      <span class="spot-count" id="spot-count" style="font-family:var(--mono);font-size:11px;color:var(--amber)">0</span>
-    </div>
-    <div class="cap-row">
-      <input class="spot-input" id="spot-input" placeholder="Position name (Corner A, Window…)" onkeydown="if(event.key==='Enter')captureSpot()"/>
-      <button class="cap-btn" id="cap-btn" onclick="captureSpot()" disabled>CAPTURE</button>
-      <div id="sample-hint" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:0 14px 8px;margin-top:-6px">Waiting for samples…</div>
-    </div>
-    <div class="spots-wrap" id="spots-list">
-      <div class="no-spots" id="no-spots-msg">Start meter → move to position → name it → CAPTURE.<br><span style="color:var(--amber);font-size:11px">Stats reset between each capture.</span></div>
-    </div>
-    <div id="spots-footer" style="display:none;padding:4px 8px 8px;text-align:right">
-      <button class="btn btn-danger" onclick="clearAll()">CLEAR ALL</button>
-    </div>
-  </div>
-
-</div><!-- /meter view -->
-
-<!-- ═══════════════ ANALYSIS VIEW ═══════════════ -->
-<div class="view" id="view-analysis">
-
-  <div class="analysis-empty" id="analysis-empty">
-    <h3>No Measurements Yet</h3>
-    <p>Go to METER, start the mic,<br>capture at least one position,<br>then return here.</p>
-  </div>
-
-  <div id="analysis-content" style="display:none;flex-direction:column;gap:12px">
-    <!-- populated by JS -->
-  </div>
-
-</div><!-- /analysis view -->
-
-<script>
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-let audioCtx, analyser, stream, rafId;
-let running = false;
-let history  = [];   // rolling dB values
-let statsAcc = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
-let fftBuf, timeBuf;
-let spots    = [];   // captured room positions
-
-// Octave band centre frequencies (Hz) + labels
-const BANDS = [
-  { f: 63,   label: '63Hz'  },
-  { f: 125,  label: '125Hz' },
-  { f: 250,  label: '250Hz' },
-  { f: 500,  label: '500Hz' },
-  { f: 1000, label: '1kHz'  },
-  { f: 2000, label: '2kHz'  },
-  { f: 4000, label: '4kHz'  },
-  { f: 8000, label: '8kHz'  },
-];
-
-// ═══════════════════════════════════════════════════════
-//  TAB SWITCHING
-// ═══════════════════════════════════════════════════════
-function switchTab(t) {
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + t).classList.add('active');
-  event.target.classList.add('active');
-  if (t === 'analysis') renderAnalysis();
-}
-
-// ═══════════════════════════════════════════════════════
-//  MIC START / STOP
-// ═══════════════════════════════════════════════════════
-async function startMic() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    });
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = audioCtx.createMediaStreamSource(stream);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 4096;
-    analyser.smoothingTimeConstant = 0.75;
-    src.connect(analyser);
-    fftBuf  = new Float32Array(analyser.frequencyBinCount);
-    timeBuf = new Float32Array(analyser.fftSize);
-
-    statsAcc = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
-    history = [];
-
-    running = true;
-    document.getElementById('btn-start').style.display = 'none';
-    document.getElementById('btn-stop').style.display  = '';
-    document.getElementById('cap-btn').disabled = false;
-    setMicPill(true);
-    hideErr();
-    tick();
-  } catch(e) {
-    showErr('Microphone access denied. Tap START and allow mic permission when prompted.');
-  }
-}
-
-function stopMic() {
-  running = false;
-  cancelAnimationFrame(rafId);
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  if (audioCtx) audioCtx.close();
-  document.getElementById('btn-start').style.display = '';
-  document.getElementById('btn-stop').style.display  = 'none';
-  document.getElementById('cap-btn').disabled = true;
-  setMicPill(false);
-  document.getElementById('db-big').textContent = '0.0';
-  document.getElementById('db-big').className = 'db-big';
-  document.getElementById('bar-fill').style.width = '0%';
-}
-
-function setMicPill(on) {
-  const p = document.getElementById('mic-pill');
-  const d = document.getElementById('mic-dot');
-  const l = document.getElementById('mic-label');
-  p.className = 'mic-pill ' + (on ? 'mic-on' : 'mic-off');
-  d.className = 'mic-dot ' + (on ? 'on' : '');
-  l.textContent = on ? 'MIC ACTIVE' : 'MIC OFF';
-}
-
-// ═══════════════════════════════════════════════════════
-//  AUDIO TICK
-// ═══════════════════════════════════════════════════════
-function tick() {
-  if (!running) return;
-
-  // RMS → dB
-  analyser.getFloatTimeDomainData(timeBuf);
-  let rms = 0;
-  for (let i = 0; i < timeBuf.length; i++) rms += timeBuf[i] * timeBuf[i];
-  rms = Math.sqrt(rms / timeBuf.length);
-  const db = rms > 0 ? Math.max(0, 20 * Math.log10(rms) + 90) : 0;
-
-  // Accumulate stats
-  const s = statsAcc;
-  if (db < s.min) s.min = db;
-  if (db > s.max) s.max = db;
-  s.sum += db; s.count++;
-
-  // History
-  history.push(db);
-  if (history.length > 250) history.shift();
-
-  // FFT data
-  analyser.getFloatFrequencyData(fftBuf);
-
-  // Update UI
-  updateReadout(db, s);
-  drawWaveform();
-  drawFFT();
-  updateBands();
-
-  // Update sample hint
-  const hint = document.getElementById('sample-hint');
-  if (hint) {
-    const n = statsAcc.count;
-    if (n < 5) hint.textContent = 'Collecting… (' + n + ' samples)';
-    else hint.textContent = '✓ Ready to capture — ' + n + ' samples';
-    hint.style.color = n < 5 ? 'var(--text-dim)' : 'var(--green)';
-  }
-
-  rafId = requestAnimationFrame(tick);
-}
-
-// ═══════════════════════════════════════════════════════
-//  UI UPDATE
-// ═══════════════════════════════════════════════════════
-function updateReadout(db, s) {
-  const el = document.getElementById('db-big');
-  el.textContent = db.toFixed(1);
-  el.className = 'db-big ' + (db < 40 ? 'c-green' : db > 75 ? 'c-red' : '');
-
-  document.getElementById('bar-fill').style.width = Math.min(100, (db / 120) * 100) + '%';
-
-  const avg = s.count ? s.sum / s.count : 0;
-  const variance = calcVariance();
-  document.getElementById('s-min').textContent = s.min === Infinity ? '—' : s.min.toFixed(1);
-  document.getElementById('s-avg').textContent = s.count ? avg.toFixed(1) : '—';
-  document.getElementById('s-max').textContent = s.max === -Infinity ? '—' : s.max.toFixed(1);
-  document.getElementById('s-var').textContent = variance > 0 ? '±' + variance.toFixed(1) : '—';
-  document.getElementById('hist-count').textContent = history.length + ' pts';
-
-  const env = dbEnv(db);
-  const badge = document.getElementById('env-badge');
-  badge.className = 'env-badge ' + env.cls;
-  document.getElementById('env-text').textContent = env.txt;
-}
-
-function calcVariance(arr) {
-  const data = arr || history;
-  if (data.length < 2) return 0;
-  const avg = data.reduce((a,b) => a+b, 0) / data.length;
-  return Math.sqrt(data.map(v => (v-avg)**2).reduce((a,b) => a+b, 0) / data.length);
-}
-
-function dbEnv(db) {
-  if (db < 30) return { cls:'env-silent', txt:'Silence' };
-  if (db < 45) return { cls:'env-quiet',  txt:'Quiet' };
-  if (db < 60) return { cls:'env-moderate',txt:'Moderate' };
-  if (db < 75) return { cls:'env-loud',   txt:'Loud' };
-  return            { cls:'env-veryloud', txt:'Very Loud' };
-}
-
-// ═══════════════════════════════════════════════════════
-//  WAVEFORM CANVAS
-// ═══════════════════════════════════════════════════════
-function drawWaveform() {
-  const canvas = document.getElementById('wave-canvas');
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth, h = 70;
-  if (canvas.width !== w*dpr) { canvas.width = w*dpr; canvas.height = h*dpr; }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-
-  // Grid
-  ctx.strokeStyle = '#1e2d3d'; ctx.lineWidth = 0.5;
-  [25,50,75,100].forEach(db => {
-    const y = h - (db/120)*h;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-  });
-
-  if (history.length < 2) return;
-  const step = w / (history.length - 1);
-
-  // Fill gradient
-  const grad = ctx.createLinearGradient(0,0,w,0);
-  grad.addColorStop(0, 'rgba(245,166,35,0.04)');
-  grad.addColorStop(1, 'rgba(245,166,35,0.2)');
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  history.forEach((v, i) => { const y = h-(v/120)*h; i===0?ctx.lineTo(0,y):ctx.lineTo(i*step,y); });
-  ctx.lineTo((history.length-1)*step, h);
-  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-
-  // Line
-  ctx.beginPath(); ctx.strokeStyle='#f5a623'; ctx.lineWidth=1.5;
-  history.forEach((v,i) => { const y=h-(v/120)*h; i===0?ctx.moveTo(0,y):ctx.lineTo(i*step,y); });
-  ctx.stroke();
-}
-
-// ═══════════════════════════════════════════════════════
-//  FFT SPECTRUM CANVAS
-// ═══════════════════════════════════════════════════════
-function drawFFT() {
-  const canvas = document.getElementById('fft-canvas');
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth, h = 110;
-  if (canvas.width !== w*dpr) { canvas.width=w*dpr; canvas.height=h*dpr; }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-
-  const nyq = audioCtx.sampleRate / 2;
-  const binCount = fftBuf.length;
-  const minHz = 20, maxHz = 20000;
-  const logMin = Math.log10(minHz), logMax = Math.log10(maxHz);
-
-  // dB grid lines
-  ctx.strokeStyle='#1e2d3d'; ctx.lineWidth=0.5;
-  [-20,-40,-60,-80,-100].forEach(db => {
-    const y = h - ((db+120)/120)*h;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-    ctx.fillStyle='#556070'; ctx.font=`${8}px 'Share Tech Mono', monospace`;
-    ctx.fillText(db+'dB', 2, y-2);
-  });
-
-  // Frequency grid
-  [50,100,200,500,1000,2000,5000,10000].forEach(f => {
-    const x = ((Math.log10(f)-logMin)/(logMax-logMin))*w;
-    ctx.strokeStyle='#1e2d3d'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
-  });
-
-  // Spectrum fill
-  const grad = ctx.createLinearGradient(0,h,0,0);
-  grad.addColorStop(0,'rgba(245,166,35,0.06)');
-  grad.addColorStop(0.5,'rgba(245,166,35,0.2)');
-  grad.addColorStop(1,'rgba(255,59,59,0.35)');
-
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  let first = true;
-  for (let i = 1; i < binCount; i++) {
-    const freq = (i / binCount) * nyq;
-    if (freq < minHz || freq > maxHz) continue;
-    const x = ((Math.log10(freq)-logMin)/(logMax-logMin))*w;
-    const dbVal = fftBuf[i]; // negative float, -Infinity..0
-    const norm = Math.max(0, Math.min(1, (dbVal + 120) / 120));
-    const y = h - norm * h;
-    if (first) { ctx.lineTo(x, y); first = false; } else { ctx.lineTo(x, y); }
-  }
-  ctx.lineTo(w, h); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-
-  // Spectrum line
-  ctx.beginPath(); ctx.strokeStyle='#f5a623'; ctx.lineWidth=1.2; first=true;
-  for (let i = 1; i < binCount; i++) {
-    const freq = (i/binCount)*nyq;
-    if (freq < minHz || freq > maxHz) continue;
-    const x = ((Math.log10(freq)-logMin)/(logMax-logMin))*w;
-    const norm = Math.max(0, Math.min(1,(fftBuf[i]+120)/120));
-    const y = h - norm*h;
-    if (first) { ctx.moveTo(x,y); first=false; } else { ctx.lineTo(x,y); }
-  }
-  ctx.stroke();
-}
-
-// ═══════════════════════════════════════════════════════
-//  OCTAVE BANDS
-// ═══════════════════════════════════════════════════════
-function getBandDb(centreHz) {
-  if (!analyser || !fftBuf) return -120;
-  const nyq = audioCtx.sampleRate / 2;
-  const binCount = fftBuf.length;
-  const lo = centreHz / Math.SQRT2, hi = centreHz * Math.SQRT2;
-  let sum = 0, count = 0;
-  for (let i = 0; i < binCount; i++) {
-    const f = (i / binCount) * nyq;
-    if (f >= lo && f <= hi) { sum += Math.pow(10, fftBuf[i]/10); count++; }
-  }
-  return count > 0 ? 10 * Math.log10(sum / count) : -120;
-}
-
-function updateBands() {
-  const grid = document.getElementById('band-grid');
-  if (!grid.children.length) {
-    BANDS.forEach((b,i) => {
-      grid.innerHTML += `<div class="band-box" id="bb-${i}">
-        <div class="band-lbl">${b.label}</div>
-        <div class="band-bar-track"><div class="band-bar-fill" id="bbf-${i}" style="height:0%;background:var(--amber)"></div></div>
-        <div class="band-val" id="bbv-${i}" style="color:var(--amber)">—</div>
-      </div>`;
-    });
-  }
-  BANDS.forEach((b,i) => {
-    const db = getBandDb(b.f);
-    const pct = Math.max(0, Math.min(100, (db + 120) / 120 * 100));
-    const col = db > -20 ? 'var(--red)' : db > -40 ? 'var(--amber)' : 'var(--blue)';
-    document.getElementById('bbf-'+i).style.height = pct + '%';
-    document.getElementById('bbf-'+i).style.background = col;
-    document.getElementById('bbv-'+i).style.color = col;
-    document.getElementById('bbv-'+i).textContent = db > -115 ? db.toFixed(0) : '—';
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  SNAPSHOT FFT (for saved spots)
-// ═══════════════════════════════════════════════════════
-function snapshotFFT() {
-  if (!fftBuf) return null;
-  return Array.from(fftBuf);
-}
-
-function snapshotBands() {
-  return BANDS.map(b => ({ label: b.label, db: getBandDb(b.f) }));
-}
-
-// ═══════════════════════════════════════════════════════
-//  SPOT CAPTURE
-// ═══════════════════════════════════════════════════════
-function captureSpot() {
-  if (!running) return;
-  if (statsAcc.count < 5) {
-    flashMsg('Hold still — collecting samples…'); return;
-  }
-  const s = statsAcc;
-  // Name BEFORE push so index is correct
-  const spotNumber = spots.length + 1;
-  const name = document.getElementById('spot-input').value.trim() || ('Spot ' + spotNumber);
-  const variance = calcVariance();
-  const avg = s.count ? s.sum / s.count : 0;
-  // Guard: min can't be 0 (artifact of startup)
-  const minVal = s.min === Infinity || s.min === 0 ? avg * 0.85 : s.min;
-  const maxVal = s.max === -Infinity ? avg * 1.15 : s.max;
-
-  spots.push({
-    id: Date.now(),
-    name,
-    avg,
-    min: minVal,
-    max: maxVal,
-    variance,
-    timestamp: new Date().toLocaleTimeString(),
-    sampleCount: s.count,
-    bands: snapshotBands(),
-    fftSnapshot: snapshotFFT(),
-  });
-
-  // Hard reset for next position
-  statsAcc = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
-  history = [];
-  document.getElementById('spot-input').value = '';
-  document.getElementById('s-min').textContent = '—';
-  document.getElementById('s-avg').textContent = '—';
-  document.getElementById('s-max').textContent = '—';
-  document.getElementById('s-var').textContent = '—';
-
-  flashMsg('✓ ' + name + ' captured!');
-  renderSpotsList();
-  document.getElementById('tab-analysis').textContent = 'ANALYSIS (' + spots.length + ')';
-}
-
-function flashMsg(msg) {
-  let el = document.getElementById('flash-msg');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'flash-msg';
-    el.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#f5a623;color:#000;font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:0.08em;padding:10px 20px;border-radius:20px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:nowrap';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.opacity = '1';
-  clearTimeout(el._t);
-  el._t = setTimeout(() => { el.style.opacity = '0'; }, 2000);
-}
-
-function removeSpot(id) {
-  spots = spots.filter(s => s.id !== id);
-  renderSpotsList();
-  document.getElementById('tab-analysis').textContent = spots.length ? 'ANALYSIS (' + spots.length + ')' : 'ANALYSIS';
-}
-
-function clearAll() {
-  spots = [];
-  renderSpotsList();
-  document.getElementById('tab-analysis').textContent = 'ANALYSIS';
-}
-
-function renderSpotsList() {
-  const list = document.getElementById('spots-list');
-  const noMsg = document.getElementById('no-spots-msg');
-  const footer = document.getElementById('spots-footer');
-  document.getElementById('spot-count').textContent = spots.length;
-
-  if (!spots.length) {
-    noMsg.style.display = '';
-    list.innerHTML = '';
-    list.appendChild(noMsg);
-    footer.style.display = 'none';
-    return;
-  }
-  noMsg.style.display = 'none';
-  // Build all spots — always visible, no scroll cap
-  list.innerHTML = spots.map((sp, i) => {
-    const scoreCol = sp.avg < 45 ? '#39ff7a' : sp.avg < 60 ? '#f5a623' : '#ff3b3b';
-    const bandStr = sp.bands ? sp.bands.slice(0,4).map(b=>b.label.replace('Hz','').replace('000','k')+':'+b.db.toFixed(0)).join(' ') : '';
-    return `<div class="spot-item" id="sitem-${sp.id}">
-      <div class="spot-num" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:26px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:3px 4px;">${String(i+1).padStart(2,'0')}</div>
-      <div class="spot-info" style="flex:1;min-width:0;">
-        <div class="spot-name-lbl" style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.name}</div>
-        <div class="spot-meta" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;">${sp.timestamp} · ${sp.sampleCount} smpl</div>
-        ${bandStr ? `<div style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;">${bandStr}</div>` : ''}
+        <div>
+          <div class="canvas-title"><span>FFT spectrum</span><span>20 Hz - 20 kHz</span></div>
+          <canvas id="fftCanvas" class="spectrum-canvas" height="60" aria-label="FFT spectrum"></canvas>
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
-        <span style="font-family:var(--mono);font-size:15px;font-weight:700;color:${scoreCol};">${sp.avg.toFixed(1)}</span>
-        <span style="font-size:8px;color:var(--text-dim);font-weight:600;letter-spacing:0.1em;">dB AVG</span>
-      </div>
-      <button class="spot-rm" onclick="removeSpot(${sp.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1;padding:4px 6px;margin-left:4px;flex-shrink:0;">×</button>
-    </div>`;
-  }).join('');
-  footer.style.display = '';
-}
 
-// ═══════════════════════════════════════════════════════
-//  ACOUSTIC ASSESSMENT ENGINE  (v2 — relative band analysis)
-// ═══════════════════════════════════════════════════════
-function assessSpot(spot, allSpots) {
-  const { avg, min, max, variance, bands } = spot;
-  const range = max - min;
-  let score = 0;
-  const notes = [], recs = [];
+      <section class="panel">
+        <h2 class="section-title">Octave Bands</h2>
+        <div id="bandsGrid" class="bands-grid" aria-label="Octave band levels" role="button" tabindex="0"></div>
+        <div id="bandsHint" class="bands-hint">Tap bands to show values</div>
+      </section>
 
-  // ── NOISE FLOOR ──────────────────────────────────────
-  let verdict = '';
-  if      (avg < 30) { verdict = 'Near-silent. Exceptional acoustic isolation at this position.'; score = 96; }
-  else if (avg < 38) { verdict = 'Exceptionally quiet. Near-anechoic conditions for a typical room.'; score = 90; }
-  else if (avg < 45) { verdict = 'Very quiet. Ideal for recording or critical listening.'; score = 82; }
-  else if (avg < 52) { verdict = 'Quiet. Acceptable noise floor for most production work.'; score = 72; }
-  else if (avg < 60) { verdict = 'Moderate. Usable but background noise is present and measurable.'; score = 58; }
-  else if (avg < 68) { verdict = 'Elevated noise floor. Significant masking of quiet details.'; score = 40; }
-  else if (avg < 75) { verdict = 'Loud environment. Recording here will pick up room noise clearly.'; score = 25; }
-  else               { verdict = 'Acoustically problematic. Immediate treatment or relocation required.'; score = 10; }
+      <section class="panel">
+        <h2 class="section-title">Room Positions</h2>
+        <div id="spotsList" class="spots-list" aria-live="polite"></div>
+        <div class="clear-row">
+          <button id="clearAllBtn" class="danger-button" type="button">Clear All</button>
+        </div>
+      </section>
 
-  // ── TEMPORAL VARIANCE ────────────────────────────────
-  if (variance > 15) {
-    notes.push('Very high temporal instability (±' + variance.toFixed(1) + ' dB). Strong flutter echo, nearby intermittent source, or modal ringing detected.');
-    recs.push('Clap sharply once and listen for flutter echo (rapid repetitive decay). Treat parallel walls with absorption panels.');
-    score -= 14;
-  } else if (variance > 9) {
-    notes.push('High variance (±' + variance.toFixed(1) + ' dB). Likely an intermittent noise source — HVAC cycle, traffic, footsteps above.');
-    recs.push('Time the variance peaks — if periodic (every 30–90s) suspect HVAC. Check vents nearest to this corner.');
-    score -= 8;
-  } else if (variance > 5) {
-    notes.push('Moderate variance (±' + variance.toFixed(1) + ' dB). Sound field has mild instability — possible low-frequency mode.');
-    score -= 3;
-  } else {
-    notes.push('Low temporal variance (±' + variance.toFixed(1) + ' dB). Sound field is stable and consistent at this position.');
-    score += 3;
-  }
+      <section class="capture-dock" aria-label="Capture controls">
+        <div class="capture-inner">
+          <input id="spotName" class="name-input" type="text" maxlength="48" placeholder="Position name">
+          <button id="captureBtn" class="primary-button" type="button">Capture</button>
+          <div id="sampleHint" class="hint" data-ready="false">Collecting… (0)</div>
+        </div>
+      </section>
+    </section>
 
-  // ── PEAK-TO-AVERAGE RATIO ────────────────────────────
-  const crest = max - avg;
-  if (crest > 20) {
-    notes.push('High crest factor (' + crest.toFixed(1) + ' dB above average). Intermittent loud events are distorting the average — consider longer measurement time.');
-    score -= 5;
-  } else if (crest < 6 && avg > 40) {
-    notes.push('Very low crest factor (' + crest.toFixed(1) + ' dB) — noise is continuous and broadband rather than impulsive. Likely HVAC or traffic.');
-  }
+    <section id="analysisPanel" class="view" data-visible="false" aria-label="Analysis">
+      <div id="analysisContent" class="mobile-stack"></div>
+    </section>
+  </main>
 
-  // ── SPECTRAL / BAND ANALYSIS (relative, not absolute) ────────────────────
-  if (bands && bands.length >= 4) {
-    const validBands = bands.filter(b => b.db > -115);
+  <script>
+    "use strict";
 
-    if (validBands.length >= 3) {
-      // Relative tilt: compare bass region vs mid region
-      const bassAvg   = bands.filter(b=>['63Hz','125Hz'].includes(b.label)).map(b=>b.db).reduce((a,v)=>a+v,0) / 2;
-      const midAvg    = bands.filter(b=>['500Hz','1kHz'].includes(b.label)).map(b=>b.db).reduce((a,v)=>a+v,0) / 2;
-      const highAvg   = bands.filter(b=>['4kHz','8kHz'].includes(b.label)).filter(b=>b.db>-115).map(b=>b.db);
-      const highMean  = highAvg.length ? highAvg.reduce((a,v)=>a+v,0)/highAvg.length : null;
+    const BANDS = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+    const MAX_HISTORY = 300;
+    const DB_MAX = 120;
+    const FFT_MIN_DB = -120;
+    const FFT_MAX_DB = 0;
 
-      const bassTilt  = bassAvg - midAvg;   // positive = bass heavy
-      const highTilt  = highMean !== null ? highMean - midAvg : null;
+    const STATE = {
+      running: false,
+      audioCtx: null,
+      analyser: null,
+      stream: null,
+      rafId: null,
+      fftBuf: null,
+      timeBuf: null,
+      acc: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
+      history: [],
+      spots: [],
+      expandedCards: {}
+    };
 
-      // Spectral spread (how uneven are the bands)
-      const allVals = validBands.map(b=>b.db);
-      const bMin = Math.min(...allVals), bMax = Math.max(...allVals);
-      const spread = bMax - bMin;
+    const els = {
+      startStopBtn: document.getElementById("startStopBtn"),
+      micPill: document.getElementById("micPill"),
+      dbReadout: document.getElementById("dbReadout"),
+      dbValue: document.getElementById("dbValue"),
+      levelPin: document.getElementById("levelPin"),
+      envBadge: document.getElementById("envBadge"),
+      envDot: document.getElementById("envDot"),
+      envText: document.getElementById("envText"),
+      statMin: document.getElementById("statMin"),
+      statAvg: document.getElementById("statAvg"),
+      statMax: document.getElementById("statMax"),
+      statVar: document.getElementById("statVar"),
+      historyCanvas: document.getElementById("historyCanvas"),
+      fftCanvas: document.getElementById("fftCanvas"),
+      bandsGrid: document.getElementById("bandsGrid"),
+      bandsHint: document.getElementById("bandsHint"),
+      spotName: document.getElementById("spotName"),
+      captureBtn: document.getElementById("captureBtn"),
+      sampleHint: document.getElementById("sampleHint"),
+      spotsList: document.getElementById("spotsList"),
+      clearAllBtn: document.getElementById("clearAllBtn"),
+      meterPanel: document.getElementById("meterPanel"),
+      analysisPanel: document.getElementById("analysisPanel"),
+      analysisContent: document.getElementById("analysisContent"),
+      tabs: Array.from(document.querySelectorAll(".tab"))
+    };
 
-      if (bassTilt > 12) {
-        notes.push('Strong bass emphasis at this position (low bands ' + bassTilt.toFixed(1) + ' dB above mids). Classic corner bass buildup — room mode accumulation below 200 Hz.');
-        recs.push('Place a broadband bass trap (min 100mm rockwool or equivalent) directly in this corner. Floor-to-ceiling treatment is most effective.');
-        score -= 10;
-      } else if (bassTilt > 6) {
-        notes.push('Mild bass buildup (low bands ' + bassTilt.toFixed(1) + ' dB above mids). Some corner reinforcement present.');
-        recs.push('A corner bass trap here would reduce low-frequency coloration. Even a large sofa or bookcase helps.');
-        score -= 5;
-      } else if (bassTilt < -8) {
-        notes.push('Bass-deficient spectrum at this position (mids ' + Math.abs(bassTilt).toFixed(1) + ' dB above lows). May be sitting at a bass null — destructive interference zone.');
-        recs.push('This position may be a standing wave null. Move 0.5–1m toward the nearest wall and re-measure.');
-        score -= 6;
+    installManifest();
+    renderAll();
+    resizeVisuals();
+
+    els.startStopBtn.addEventListener("click", toggleAudio);
+    els.captureBtn.addEventListener("click", captureSpot);
+    els.clearAllBtn.addEventListener("click", clearAllSpots);
+    els.bandsGrid.addEventListener("click", toggleBands);
+    els.bandsGrid.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleBands();
+      }
+    });
+    window.addEventListener("resize", () => {
+      resizeVisuals();
+      drawHistory();
+      drawSpectrum(STATE.fftBuf);
+      renderAnalysisCanvases();
+    });
+
+    els.tabs.forEach((tab) => {
+      tab.addEventListener("click", () => setView(tab.dataset.tab));
+    });
+
+    els.spotsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-spot]");
+      if (!removeButton) return;
+      const id = Number(removeButton.dataset.removeSpot);
+      STATE.spots = STATE.spots.filter((spot) => spot.id !== id);
+      delete STATE.expandedCards[`spot-${id}`];
+      delete STATE.expandedCards[`report-${id}`];
+      delete STATE.expandedCards[`assessment-${id}`];
+      renderAll();
+      return;
+    });
+
+    els.spotsList.addEventListener("click", (event) => {
+      if (event.target.closest("[data-remove-spot]")) return;
+      const card = event.target.closest("[data-toggle-spot]");
+      if (!card) return;
+      const id = Number(card.dataset.toggleSpot);
+      const key = `spot-${id}`;
+      STATE.expandedCards[key] = STATE.expandedCards[key] !== true;
+      renderSpotsList();
+    });
+
+    els.analysisContent.addEventListener("click", (event) => {
+      const toggleButton = event.target.closest("[data-toggle-card]");
+      const sectionButton = event.target.closest("[data-section-tab]");
+      const readMoreButton = event.target.closest("[data-read-assessment]");
+      if (toggleButton) {
+        const id = Number(toggleButton.dataset.toggleCard);
+        const key = `report-${id}`;
+        STATE.expandedCards[key] = STATE.expandedCards[key] !== true;
+        renderAnalysis();
+        return;
+      }
+      if (sectionButton) {
+        const id = Number(sectionButton.dataset.sectionTab);
+        const section = sectionButton.dataset.reportSection;
+        setReportSection(id, section);
+        renderAnalysis();
+        return;
+      }
+      if (readMoreButton) {
+        const id = Number(readMoreButton.dataset.readAssessment);
+        const key = `assessment-${id}`;
+        STATE.expandedCards[key] = STATE.expandedCards[key] !== true;
+        renderAnalysis();
+      }
+    });
+
+    async function toggleAudio() {
+      if (STATE.running) {
+        stopAudio();
+        return;
+      }
+      await startAudio();
+    }
+
+    async function startAudio() {
+      try {
+        const constraints = {
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioCtor();
+        await audioCtx.resume();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 4096;
+        analyser.minDecibels = FFT_MIN_DB;
+        analyser.maxDecibels = FFT_MAX_DB;
+        analyser.smoothingTimeConstant = 0.62;
+
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        STATE.running = true;
+        STATE.audioCtx = audioCtx;
+        STATE.analyser = analyser;
+        STATE.stream = stream;
+        STATE.fftBuf = new Float32Array(analyser.frequencyBinCount);
+        STATE.timeBuf = new Float32Array(analyser.fftSize);
+        STATE.rafId = requestAnimationFrame(tick);
+        renderControls();
+      } catch (error) {
+        alert("Microphone access failed. Open this page over HTTPS and allow mic permission.");
+        console.error(error);
+        stopAudio();
+      }
+    }
+
+    function stopAudio() {
+      if (STATE.rafId !== null) {
+        cancelAnimationFrame(STATE.rafId);
+      }
+      if (STATE.stream) {
+        STATE.stream.getTracks().forEach((track) => track.stop());
+      }
+      if (STATE.audioCtx && STATE.audioCtx.state !== "closed") {
+        STATE.audioCtx.close().catch(() => {});
+      }
+      STATE.running = false;
+      STATE.audioCtx = null;
+      STATE.analyser = null;
+      STATE.stream = null;
+      STATE.rafId = null;
+      STATE.fftBuf = null;
+      STATE.timeBuf = null;
+      renderControls();
+      renderSampleHint();
+    }
+
+    function tick() {
+      if (!STATE.running || !STATE.analyser || !STATE.fftBuf || !STATE.timeBuf) return;
+      STATE.analyser.getFloatTimeDomainData(STATE.timeBuf);
+      STATE.analyser.getFloatFrequencyData(STATE.fftBuf);
+
+      const db = rmsToDb(STATE.timeBuf);
+      updateAccumulator(db);
+      renderMeter(db);
+      drawHistory();
+      drawSpectrum(STATE.fftBuf);
+      renderLiveBands(db);
+      STATE.rafId = requestAnimationFrame(tick);
+    }
+
+    function rmsToDb(timeBuf) {
+      let sumSquares = 0;
+      for (let i = 0; i < timeBuf.length; i += 1) {
+        sumSquares += timeBuf[i] * timeBuf[i];
+      }
+      const rms = Math.sqrt(sumSquares / timeBuf.length);
+      return Math.max(0, 20 * Math.log10(rms) + 90);
+    }
+
+    function updateAccumulator(db) {
+      STATE.acc.min = Math.min(STATE.acc.min, db);
+      STATE.acc.max = Math.max(STATE.acc.max, db);
+      STATE.acc.sum += db;
+      STATE.acc.count += 1;
+      STATE.history.push(db);
+      if (STATE.history.length > MAX_HISTORY) {
+        STATE.history.shift();
+      }
+    }
+
+    function resetCaptureWindow() {
+      STATE.acc = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
+      STATE.history = [];
+    }
+
+    function captureSpot() {
+      if (!STATE.running || !STATE.fftBuf || STATE.acc.count === 0) return;
+      const currentAvg = getCurrentAverage();
+      const variance = getCurrentVariance();
+      const relBands = calculateBands(STATE.fftBuf, currentAvg);
+      const fftSnapshot = new Float32Array(STATE.fftBuf);
+      const fallbackName = `Position ${String(STATE.spots.length + 1).padStart(2, "0")}`;
+      const spot = {
+        id: Date.now(),
+        name: els.spotName.value.trim() || fallbackName,
+        avg: currentAvg,
+        min: STATE.acc.min,
+        max: STATE.acc.max,
+        variance,
+        sampleCount: STATE.acc.count,
+        timestamp: new Date().toLocaleString(),
+        bands: relBands.map((band) => ({
+          label: band.label,
+          relDb: band.relDb,
+          absDb: currentAvg + band.relDb
+        })),
+        fftSnapshot
+      };
+      STATE.spots.push(spot);
+      els.spotName.value = "";
+      resetCaptureWindow();
+      renderAll();
+      drawHistory();
+      drawSpectrum(STATE.fftBuf);
+    }
+
+    function clearAllSpots() {
+      STATE.spots = [];
+      STATE.expandedCards = {};
+      renderAll();
+    }
+
+    function getCurrentAverage() {
+      return STATE.acc.count ? STATE.acc.sum / STATE.acc.count : 0;
+    }
+
+    function getCurrentVariance() {
+      return standardDeviation(STATE.history);
+    }
+
+    function standardDeviation(values) {
+      if (!values.length) return 0;
+      const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+      const variance = values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / values.length;
+      return Math.sqrt(variance);
+    }
+
+    function calculateBands(fftValues, currentAvg) {
+      if (!fftValues || !fftValues.length) {
+        return BANDS.map((center) => ({ label: formatBandLabel(center), relDb: 0, absDb: currentAvg }));
+      }
+      const rawBandDb = BANDS.map((center) => calculateBandDb(fftValues, center));
+      const usable = rawBandDb.filter(Number.isFinite);
+      const reference = usable.length ? usable.reduce((sum, value) => sum + value, 0) / usable.length : 0;
+      return BANDS.map((center, index) => {
+        const raw = Number.isFinite(rawBandDb[index]) ? rawBandDb[index] : reference;
+        const relDb = clamp(raw - reference, -36, 36);
+        return {
+          label: formatBandLabel(center),
+          relDb,
+          absDb: currentAvg + relDb
+        };
+      });
+    }
+
+    function calculateBandDb(fftValues, center) {
+      const sampleRate = STATE.audioCtx ? STATE.audioCtx.sampleRate : 48000;
+      const binHz = sampleRate / 4096;
+      const low = center / Math.SQRT2;
+      const high = center * Math.SQRT2;
+      let power = 0;
+      for (let i = 0; i < fftValues.length; i += 1) {
+        const frequency = i * binHz;
+        if (frequency >= low && frequency <= high) {
+          power += Math.pow(10, fftValues[i] / 10);
+        }
+      }
+      return power > 0 ? 10 * Math.log10(power) : -120;
+    }
+
+    function renderAll() {
+      const latest = STATE.history.length ? STATE.history[STATE.history.length - 1] : null;
+      renderControls();
+      renderMeter(latest);
+      renderLiveBands(latest);
+      renderSpotsList();
+      renderAnalysis();
+    }
+
+    function renderControls() {
+      els.startStopBtn.textContent = STATE.running ? "Stop" : "Start";
+      els.micPill.dataset.active = String(STATE.running);
+      els.micPill.querySelector("span:last-child").textContent = STATE.running ? "Mic active" : "Mic inactive";
+      els.captureBtn.disabled = !STATE.running || STATE.acc.count === 0;
+    }
+
+    function renderMeter(db) {
+      const activeDb = Number.isFinite(db) ? db : null;
+      if (activeDb === null) {
+        els.dbValue.textContent = "—";
+        els.dbReadout.style.color = "var(--green)";
+        els.levelPin.style.left = "0%";
+        renderEnvironment(0);
       } else {
-        notes.push('Bass-to-mid balance is even (tilt: ' + (bassTilt > 0 ? '+' : '') + bassTilt.toFixed(1) + ' dB). No significant corner buildup at this position.');
-        score += 4;
+        els.dbValue.textContent = activeDb.toFixed(1);
+        els.dbReadout.style.color = levelColor(activeDb);
+        els.levelPin.style.left = `${clamp(activeDb / DB_MAX, 0, 1) * 100}%`;
+        renderEnvironment(activeDb);
       }
-
-      if (highTilt !== null && highTilt > 8) {
-        notes.push('Elevated high-frequency energy (' + highTilt.toFixed(1) + ' dB above mids). Hard reflective surface nearby is scattering HF energy toward this point.');
-        recs.push('Check for bare glass, tile, or smooth concrete within 2m. Add diffusion (bookshelf, acoustic panel) at the first reflection point.');
-        score -= 6;
-      } else if (highTilt !== null && highTilt < -15) {
-        notes.push('Strong high-frequency roll-off (' + Math.abs(highTilt).toFixed(1) + ' dB below mids). Heavy soft furnishing absorption or distance from source.');
-      }
-
-      if (spread > 35) {
-        notes.push('Large spectral spread across octave bands (' + spread.toFixed(1) + ' dB). This room position is heavily colored — it amplifies some frequencies and kills others.');
-        score -= 7;
-      } else if (spread < 18) {
-        notes.push('Spectrally balanced position (' + spread.toFixed(1) + ' dB spread across all bands). Room is adding minimal coloration here.');
-        score += 5;
-      }
-    }
-  }
-
-  // ── CROSS-POSITION COMPARISON (if other spots exist) ──────────────────────
-  if (allSpots && allSpots.length > 1) {
-    const others = allSpots.filter(s => s.id !== spot.id);
-    const otherAvgs = others.map(s => s.avg);
-    const roomMean = allSpots.map(s=>s.avg).reduce((a,b)=>a+b,0) / allSpots.length;
-    const deviation = avg - roomMean;
-    if (deviation < -4) {
-      notes.push('This position is ' + Math.abs(deviation).toFixed(1) + ' dB quieter than the room average — it is the best acoustic position measured.');
-      score += 5;
-    } else if (deviation > 4) {
-      notes.push('This position is ' + deviation.toFixed(1) + ' dB louder than the room average — acoustically the weakest position measured.');
-      score -= 5;
-    }
-  }
-
-  // ── RECOMMENDATIONS FALLBACK ──────────────────────────
-  if (avg < 42 && variance < 6) {
-    recs.push('Excellent position — prioritise this spot for critical listening, recording, or microphone placement.');
-  }
-  if (avg > 55 && !recs.some(r=>r.includes('absorption'))) {
-    recs.push('Add broadband absorption (thick curtains, acoustic panels, bookshelves) to at least two reflective surfaces visible from this point.');
-  }
-  if (avg > 70) {
-    recs.push('Check for airborne noise paths: gaps under doors, thin windows, unlined ventilation ducts.');
-  }
-  if (!recs.length) {
-    recs.push('Position shows acceptable acoustic behaviour. Minor diffusion (scattered objects, bookshelves) could further smooth frequency response.');
-  }
-
-  return { verdict, notes, recs, score: Math.max(5, Math.min(100, Math.round(score))) };
-}
-
-function roomSummary(spots) {
-  const avgs  = spots.map(s => s.avg);
-  const grand = avgs.reduce((a,b)=>a+b,0)/avgs.length;
-  const spread = Math.max(...avgs) - Math.min(...avgs);
-  const quietest = spots.reduce((a,b)=>a.avg<b.avg?a:b);
-  const loudest  = spots.reduce((a,b)=>a.avg>b.avg?a:b);
-  const allMax = Math.max(...spots.map(s=>s.max));
-  const findings = [];
-
-  findings.push('Mean level across all positions: ' + grand.toFixed(1) + ' dB. ' +
-    (grand<50?'Quiet overall environment.':grand<65?'Moderate noise floor across the room.':'Elevated room noise — treatment advised.'));
-
-  if (spread > 15)
-    findings.push('High position-to-position variation (' + spread.toFixed(1) + ' dB). Significant modal distribution or asymmetric treatment. Best position: ' + quietest.name + '; worst: ' + loudest.name + '.');
-  else if (spread > 8)
-    findings.push('Moderate variation (' + spread.toFixed(1) + ' dB). Localised acoustic issues present. Favour ' + quietest.name + ' for critical use.');
-  else
-    findings.push('Uniform level distribution across positions (' + spread.toFixed(1) + ' dB spread). Room modes are balanced.');
-
-  findings.push('Quietest: ' + quietest.name + ' (' + quietest.avg.toFixed(1) + ' dB avg). Loudest: ' + loudest.name + ' (' + loudest.avg.toFixed(1) + ' dB avg).');
-  if (allMax > 85) findings.push('Peak levels above 85 dB recorded. Prolonged exposure risk. Identify and treat the noise source.');
-
-  // Cross-spot spectral
-  const bassBuildup = spots.filter(sp => {
-    const b = sp.bands?.find(b=>b.label==='63Hz');
-    return b && b.db > -30;
-  });
-  if (bassBuildup.length > 1)
-    findings.push(bassBuildup.length + ' positions show corner bass buildup. Room has prominent low-frequency modes — bass traps in corners strongly recommended.');
-
-  // Spectral comparison: find which spot has most bass buildup
-  if (spots.length > 1) {
-    const bassScores = spots.map(sp => {
-      if (!sp.bands) return null;
-      const bass = sp.bands.filter(b=>['63Hz','125Hz'].includes(b.label)).map(b=>b.db);
-      const mid  = sp.bands.filter(b=>['500Hz','1kHz'].includes(b.label)).map(b=>b.db);
-      if (!bass.length || !mid.length) return null;
-      const bAvg = bass.reduce((a,v)=>a+v,0)/bass.length;
-      const mAvg = mid.reduce((a,v)=>a+v,0)/mid.length;
-      return { name: sp.name, tilt: bAvg - mAvg };
-    }).filter(Boolean);
-
-    if (bassScores.length > 1) {
-      const mostBass = bassScores.reduce((a,b)=>a.tilt>b.tilt?a:b);
-      const leastBass = bassScores.reduce((a,b)=>a.tilt<b.tilt?a:b);
-      if (mostBass.tilt - leastBass.tilt > 8) {
-        findings.push('Spectral comparison: ' + mostBass.name + ' has the most bass buildup (low-frequency tilt +' + mostBass.tilt.toFixed(1) + ' dB vs mids). ' + leastBass.name + ' is the most spectrally balanced position.');
-      }
+      renderStats();
+      renderSampleHint();
+      renderControls();
     }
 
-    // Variance comparison
-    const varScores = spots.map(sp => ({ name: sp.name, v: sp.variance }));
-    const mostStable = varScores.reduce((a,b)=>a.v<b.v?a:b);
-    const leastStable = varScores.reduce((a,b)=>a.v>b.v?a:b);
-    if (leastStable.v - mostStable.v > 4) {
-      findings.push('Stability comparison: ' + mostStable.name + ' is the most temporally stable (±' + mostStable.v.toFixed(1) + ' dB). ' + leastStable.name + ' shows most instability (±' + leastStable.v.toFixed(1) + ' dB).');
+    function renderEnvironment(db) {
+      let label = "Silence";
+      if (db >= 75) label = "Very Loud";
+      else if (db >= 60) label = "Loud";
+      else if (db >= 45) label = "Moderate";
+      else if (db >= 30) label = "Quiet";
+      const color = levelColor(db);
+      els.envText.textContent = label;
+      els.envBadge.style.borderColor = color;
+      els.envDot.style.background = color;
     }
-  }
 
-  return findings;
-}
+    function renderStats() {
+      if (!STATE.acc.count) {
+        els.statMin.textContent = "—";
+        els.statAvg.textContent = "—";
+        els.statMax.textContent = "—";
+        els.statVar.textContent = "—";
+        return;
+      }
+      els.statMin.textContent = formatDb(STATE.acc.min);
+      els.statAvg.textContent = formatDb(getCurrentAverage());
+      els.statMax.textContent = formatDb(STATE.acc.max);
+      els.statVar.textContent = getCurrentVariance().toFixed(1);
+    }
 
-// ═══════════════════════════════════════════════════════
-//  SNAPSHOT FFT CANVAS (saved in report cards)
-// ═══════════════════════════════════════════════════════
-function drawSnapshotFFT(canvasId, fftData, sampleRate) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || !fftData) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth, h = 70;
-  canvas.width = w*dpr; canvas.height = h*dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
+    function renderSampleHint() {
+      const count = STATE.acc.count;
+      const ready = count >= 10;
+      els.sampleHint.dataset.ready = String(ready);
+      els.sampleHint.textContent = ready ? `✓ Ready — ${count} samples` : `Collecting… (${count})`;
+    }
 
-  const nyq = (sampleRate || 44100) / 2;
-  const binCount = fftData.length;
-  const logMin = Math.log10(20), logMax = Math.log10(20000);
-
-  ctx.strokeStyle='#1e2d3d'; ctx.lineWidth=0.5;
-  [-40,-80].forEach(db=>{
-    const y=h-((db+120)/120)*h;
-    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
-  });
-
-  const grad=ctx.createLinearGradient(0,h,0,0);
-  grad.addColorStop(0,'rgba(245,166,35,0.05)');
-  grad.addColorStop(1,'rgba(245,166,35,0.25)');
-
-  ctx.beginPath(); ctx.moveTo(0,h);
-  let first=true;
-  for (let i=1;i<binCount;i++){
-    const freq=(i/binCount)*nyq;
-    if(freq<20||freq>20000) continue;
-    const x=((Math.log10(freq)-logMin)/(logMax-logMin))*w;
-    const norm=Math.max(0,Math.min(1,(fftData[i]+120)/120));
-    const y=h-norm*h;
-    first?(ctx.lineTo(x,y),first=false):ctx.lineTo(x,y);
-  }
-  ctx.lineTo(w,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
-
-  ctx.beginPath(); ctx.strokeStyle='#f5a62399'; ctx.lineWidth=1; first=true;
-  for (let i=1;i<binCount;i++){
-    const freq=(i/binCount)*nyq;
-    if(freq<20||freq>20000) continue;
-    const x=((Math.log10(freq)-logMin)/(logMax-logMin))*w;
-    const norm=Math.max(0,Math.min(1,(fftData[i]+120)/120));
-    const y=h-norm*h;
-    first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-}
-
-// ═══════════════════════════════════════════════════════
-//  COMPARISON CHART
-// ═══════════════════════════════════════════════════════
-function drawComparison(canvasId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || !spots.length) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth, h = 150;
-  canvas.width=w*dpr; canvas.height=h*dpr;
-  const ctx=canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-
-  const pad={l:14,r:8,t:10,b:38};
-  const cw=w-pad.l-pad.r, ch=h-pad.t-pad.b;
-  const maxDB=100;
-
-  [25,50,75,100].forEach(db=>{
-    const y=pad.t+ch-(db/maxDB)*ch;
-    ctx.strokeStyle='#1e2d3d';ctx.lineWidth=0.5;
-    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
-    ctx.fillStyle='#556070';ctx.font=`8px 'Share Tech Mono',monospace`;
-    ctx.fillText(db,0,y+3);
-  });
-
-  const bw=Math.min(36,(cw/spots.length)*0.5);
-  const gap=cw/spots.length;
-
-  spots.forEach((sp,i)=>{
-    const x=pad.l+i*gap+gap/2;
-    const yMin=pad.t+ch-(Math.min(sp.min,maxDB)/maxDB)*ch;
-    const yMax=pad.t+ch-(Math.min(sp.max,maxDB)/maxDB)*ch;
-    ctx.fillStyle='rgba(245,166,35,0.1)';
-    ctx.fillRect(x-bw/2,yMax,bw,yMin-yMax);
-
-    const yAvg=pad.t+ch-(Math.min(sp.avg,maxDB)/maxDB)*ch;
-    const bh=pad.t+ch-yAvg;
-    const grad=ctx.createLinearGradient(0,yAvg,0,pad.t+ch);
-    grad.addColorStop(0,sp.avg>70?'#ff3b3b':'#f5a623');
-    grad.addColorStop(1,sp.avg>70?'#ff3b3b22':'#f5a62322');
-    ctx.fillStyle=grad;
-    ctx.fillRect(x-bw/2+2,yAvg,bw-4,bh);
-
-    ctx.strokeStyle=sp.avg>70?'#ff3b3b':'#f5a623';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(x-bw/2,yAvg);ctx.lineTo(x+bw/2,yAvg);ctx.stroke();
-
-    const lbl=sp.name.length>7?sp.name.slice(0,6)+'…':sp.name;
-    ctx.fillStyle='#c9d1d9';ctx.font=`bold 10px Rajdhani,sans-serif`;ctx.textAlign='center';
-    ctx.fillText(lbl,x,h-pad.b+13);
-    ctx.fillStyle='#556070';ctx.font=`9px 'Share Tech Mono',monospace`;
-    ctx.fillText(sp.avg.toFixed(0)+'dB',x,h-pad.b+24);
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  RENDER ANALYSIS VIEW
-// ═══════════════════════════════════════════════════════
-const expandState = {};
-
-function renderAnalysis() {
-  const empty   = document.getElementById('analysis-empty');
-  const content = document.getElementById('analysis-content');
-  if (!spots.length) { empty.style.display=''; content.style.display='none'; return; }
-  empty.style.display='none'; content.style.display='flex';
-
-  const summary = roomSummary(spots);
-
-  content.innerHTML = `
-    <div class="analysis-hdr">
-      <h2>Acoustic Analysis Report</h2>
-      <p>${spots.length} position${spots.length>1?'s':''} measured · ${new Date().toLocaleString()}</p>
-    </div>
-
-    ${spots.length>1 ? `
-    <div class="block">
-      <div class="block-head"><span class="block-title">LEVEL COMPARISON — all positions (bar = avg, range = min/max)</span></div>
-      <canvas id="cmp-canvas" height="150"></canvas>
-    </div>` : ''}
-
-    ${spots.length>1 ? `
-    <div class="summary-card">
-      <div class="summary-head">ROOM OVERVIEW</div>
-      <div class="summary-body">
-        ${summary.map(f=>`<div class="finding"><span class="finding-arr">→</span><span>${f}</span></div>`).join('')}
-      </div>
-    </div>` : ''}
-
-    ${spots.map((sp, idx) => {
-      const { verdict, notes, recs, score } = assessSpot(sp, spots);
-      const open = expandState[sp.id] !== false;
-      const scoreCol = score>70?'var(--green)':score>45?'var(--amber)':'var(--red)';
-      const stabPct = Math.max(5,100-sp.variance*4);
-      const stabCol = sp.variance<5?'var(--green)':sp.variance<10?'var(--amber)':'var(--red)';
-      return `
-      <div class="report-card">
-        <div class="rc-head" onclick="toggleCard(${sp.id})">
-          <div class="rc-title">
-            <div class="rc-num">${String(idx+1).padStart(2,'0')}</div>
-            <span class="rc-name">${sp.name}</span>
+    function renderLiveBands(db) {
+      const avg = STATE.acc.count ? getCurrentAverage() : (Number.isFinite(db) ? db : 0);
+      const bands = STATE.fftBuf ? calculateBands(STATE.fftBuf, avg) : calculateBands(null, avg);
+      const expanded = STATE.expandedCards.bands === true;
+      els.bandsHint.textContent = expanded ? "Tap bands to hide values" : "Tap bands to show values";
+      els.bandsGrid.innerHTML = bands.map((band) => {
+        const level = Number.isFinite(band.absDb) ? band.absDb : 0;
+        const width = clamp(level / DB_MAX, 0, 1) * 100;
+        const color = bandColor(level);
+        return `
+          <div class="band-box">
+            <div class="band-label">${escapeHtml(band.label)}</div>
+            <div class="band-track"><div class="band-fill" style="width:${width.toFixed(1)}%;background:${color}"></div></div>
+            ${expanded ? `<div class="band-value" style="color:${color}">${formatDb(level)}</div>` : ""}
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="rc-avg">${sp.avg.toFixed(1)} dB</span>
-            <span class="arr ${open?'open':''}" id="arr-${sp.id}">▼</span>
+        `;
+      }).join("");
+    }
+
+    function renderSpotsList() {
+      if (!STATE.spots.length) {
+        els.spotsList.innerHTML = `<div class="empty-state">No captured room positions yet.</div>`;
+        return;
+      }
+      els.spotsList.innerHTML = STATE.spots.map((spot, index) => {
+        const color = levelColor(spot.avg);
+        const open = STATE.expandedCards[`spot-${spot.id}`] === true;
+        const preview = [0, 2, 4, 6].map((bandIndex) => {
+          const band = spot.bands[bandIndex];
+          return `<span class="preview-pill">${escapeHtml(band.label)} ${formatDb(band.absDb)}</span>`;
+        }).join("");
+        return `
+          <article class="spot-card" data-toggle-spot="${spot.id}">
+            <div class="spot-index">${String(index + 1).padStart(2, "0")}</div>
+            <div class="spot-main">
+              <div class="spot-name">${escapeHtml(spot.name)}</div>
+            </div>
+            <div class="spot-db" style="color:${color}">${spot.avg.toFixed(1)}</div>
+            <button class="icon-button" type="button" data-remove-spot="${spot.id}" title="Remove ${escapeHtml(spot.name)}" aria-label="Remove ${escapeHtml(spot.name)}">×</button>
+            ${open ? `<div class="spot-preview"><span class="spot-meta">${escapeHtml(spot.timestamp)} · ${spot.sampleCount} samples</span>${preview}</div>` : ""}
+          </article>
+        `;
+      }).join("");
+    }
+
+    function toggleBands() {
+      STATE.expandedCards.bands = STATE.expandedCards.bands !== true;
+      renderLiveBands(STATE.history.length ? STATE.history[STATE.history.length - 1] : null);
+    }
+
+    function renderAnalysis() {
+      if (!STATE.spots.length) {
+        els.analysisContent.innerHTML = `<div class="empty-state">No captured positions. Capture at least one spot on the Meter tab to build an acoustic analysis report.</div>`;
+        return;
+      }
+      const reportTime = new Date().toLocaleString();
+      const sections = [
+        renderReportHeader(reportTime),
+        STATE.spots.length > 1 ? renderComparisonSection() : "",
+        STATE.spots.length > 1 ? renderOverviewFindings() : "",
+        STATE.spots.map((spot, index) => renderReportCard(spot, index, STATE.spots)).join("")
+      ];
+      els.analysisContent.innerHTML = sections.join("");
+      setTimeout(renderAnalysisCanvases, 100);
+    }
+
+    function renderReportHeader(reportTime) {
+      const count = STATE.spots.length;
+      return `
+        <section class="panel report-header">
+          <div>
+            <h1 class="report-title">Acoustic Analysis Report</h1>
+            <div class="spot-meta">${count} ${count === 1 ? "position" : "positions"}</div>
+          </div>
+          <div class="report-meta">${escapeHtml(reportTime)}</div>
+        </section>
+      `;
+    }
+
+    function renderComparisonSection() {
+      return `
+        <section class="panel">
+          <h2 class="section-title">Comparison Chart</h2>
+          <canvas id="comparisonCanvas" class="comparison-canvas" height="260" aria-label="Captured position comparison chart"></canvas>
+        </section>
+      `;
+    }
+
+    function renderOverviewFindings() {
+      const roomAvg = mean(STATE.spots.map((spot) => spot.avg));
+      const quietest = STATE.spots.reduce((best, spot) => spot.avg < best.avg ? spot : best, STATE.spots[0]);
+      const loudest = STATE.spots.reduce((best, spot) => spot.avg > best.avg ? spot : best, STATE.spots[0]);
+      const spread = loudest.avg - quietest.avg;
+      const bassLeader = STATE.spots.map((spot) => ({ spot, tilt: getBassTilt(spot) })).reduce((best, item) => item.tilt > best.tilt ? item : best);
+      const stable = STATE.spots.reduce((best, spot) => spot.variance < best.variance ? spot : best, STATE.spots[0]);
+      const unstable = STATE.spots.reduce((best, spot) => spot.variance > best.variance ? spot : best, STATE.spots[0]);
+      const spreadText = spread > 12
+        ? `${spread.toFixed(1)} dB spread: significant modal distribution`
+        : `${spread.toFixed(1)} dB spread: controlled position distribution`;
+      const bullets = [
+        `Room mean is ${formatDb(roomAvg)} dB; ${spreadText}.`,
+        `${escapeHtml(quietest.name)} is quietest at ${formatDb(quietest.avg)} dB, ${escapeHtml(loudest.name)} is loudest at ${formatDb(loudest.avg)} dB.`,
+        `${escapeHtml(bassLeader.spot.name)} has the strongest bass tilt at ${signed(bassLeader.tilt)} dB; stability runs from ±${stable.variance.toFixed(1)} to ±${unstable.variance.toFixed(1)} dB.`
+      ];
+      return `
+        <section class="panel">
+          <h2 class="section-title">Room Overview Findings</h2>
+          <ul class="finding-list">
+            ${bullets.map((bullet) => `<li class="finding-item">${bullet}</li>`).join("")}
+          </ul>
+        </section>
+      `;
+    }
+
+    function renderReportCard(spot, index, allSpots) {
+      const assessment = assessSpot(spot, allSpots);
+      const open = STATE.expandedCards[`report-${spot.id}`] === true;
+      const qualityColor = qualityColorForScore(assessment.score);
+      return `
+        <article class="report-card">
+          <button class="report-card-head" type="button" data-toggle-card="${spot.id}" aria-expanded="${open}">
+            <div class="spot-index">${String(index + 1).padStart(2, "0")}</div>
+            <div class="report-name">${escapeHtml(spot.name)}</div>
+            <div class="report-avg" style="color:${levelColor(spot.avg)}">${spot.avg.toFixed(1)} dB</div>
+            <div class="report-score">Score: ${assessment.score}</div>
+            <div class="collapse-arrow">${open ? "▲" : "▼"}</div>
+          </button>
+          ${open ? renderReportBody(spot, assessment, qualityColor) : ""}
+        </article>
+      `;
+    }
+
+    function renderReportBody(spot, assessment, qualityColor) {
+      const stabilityScore = clamp(100 - (spot.variance * 5), 0, 100);
+      const stabilityColor = spot.variance < 5 ? "var(--green)" : spot.variance < 10 ? "var(--amber)" : "var(--red)";
+      const activeSection = getReportSection(spot.id);
+      return `
+        <div class="report-card-body">
+          ${renderSectionTabs(spot.id, activeSection)}
+          ${activeSection === "metrics" ? renderMetricsSection(spot, assessment, qualityColor, stabilityScore, stabilityColor) : ""}
+          ${activeSection === "spectrum" ? renderSpectrumSection(spot) : ""}
+          ${activeSection === "assessment" ? renderAssessmentSection(spot, assessment) : ""}
+          ${activeSection === "recs" ? renderRecommendationsSection(assessment) : ""}
+        </div>
+      `;
+    }
+
+    function renderSectionTabs(id, activeSection) {
+      const tabs = [
+        ["metrics", "Metrics"],
+        ["spectrum", "Spectrum"],
+        ["assessment", "Assessment"],
+        ["recs", "Recs"]
+      ];
+      return `
+        <div class="section-tabs" role="tablist" aria-label="Report detail sections">
+          ${tabs.map(([key, label]) => `
+            <button class="section-tab" type="button" data-section-tab="${id}" data-report-section="${key}" data-section-active="${activeSection === key}">
+              ${label}
+            </button>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderMetricsSection(spot, assessment, qualityColor, stabilityScore, stabilityColor) {
+      return `
+        <div class="metrics-row">
+          ${metricTile("Min", formatDb(spot.min), "var(--blue)")}
+          ${metricTile("Avg", formatDb(spot.avg), "var(--amber)")}
+          ${metricTile("Max", formatDb(spot.max), "var(--red)")}
+          ${metricTile("±Var", `±${spot.variance.toFixed(1)}`, "var(--purple)")}
+        </div>
+        <div class="band-values-row">
+          ${spot.bands.map((band) => {
+            const color = bandColor(band.absDb);
+            return `<div class="band-value-box"><div class="band-label">${escapeHtml(band.label)}</div><div class="band-value" style="color:${color}">${formatDb(band.absDb)}</div></div>`;
+          }).join("")}
+        </div>
+        <div class="score-wrap">
+          <div class="score-line">
+            <div class="score-label"><span>Acoustic Quality: ${assessment.score}/100 — ${assessment.quality}</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:${assessment.score}%;background:${qualityColor}"></div></div>
+          </div>
+          <div class="score-line">
+            <div class="score-label"><span>Temporal Stability</span><span>±${spot.variance.toFixed(1)} dB</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:${stabilityScore.toFixed(0)}%;background:${stabilityColor}"></div></div>
           </div>
         </div>
-        ${open ? `<div class="rc-body" id="body-${sp.id}">
+      `;
+    }
 
-          <div class="metrics-grid">
-            <div class="mbox"><div class="mlbl">MIN</div><div class="mval" style="color:var(--blue)">${sp.min.toFixed(1)}</div></div>
-            <div class="mbox"><div class="mlbl">AVG</div><div class="mval" style="color:var(--amber)">${sp.avg.toFixed(1)}</div></div>
-            <div class="mbox"><div class="mlbl">MAX</div><div class="mval" style="color:var(--red)">${sp.max.toFixed(1)}</div></div>
-            <div class="mbox"><div class="mlbl">±VAR</div><div class="mval" style="color:var(--purple)">±${sp.variance.toFixed(1)}</div></div>
-          </div>
+    function renderSpectrumSection(spot) {
+      return `<canvas id="fftSnap-${spot.id}" class="snapshot-canvas" height="70" aria-label="FFT snapshot for ${escapeHtml(spot.name)}"></canvas>`;
+    }
 
-          <div class="rating-row">
-            <div class="rating-top"><span class="rating-name">Acoustic Quality</span><span class="rating-score" style="color:${scoreCol}">${score}/100</span></div>
-            <div class="rbar-track"><div class="rbar-fill" style="width:${score}%;background:${scoreCol}"></div></div>
-          </div>
+    function renderAssessmentSection(spot, assessment) {
+      const key = `assessment-${spot.id}`;
+      const expanded = STATE.expandedCards[key] === true;
+      const visibleLines = expanded ? assessment.lines : assessment.lines.slice(0, 3);
+      return `
+        <div class="assessment">
+          ${visibleLines.map((line) => `<div class="assessment-line">${escapeHtml(line)}</div>`).join("")}
+          ${assessment.lines.length > 3 ? `<button class="assessment-more" type="button" data-read-assessment="${spot.id}">${expanded ? "Show less" : "Read more"}</button>` : ""}
+        </div>
+      `;
+    }
 
-          <div class="rating-row">
-            <div class="rating-top"><span class="rating-name">Temporal Stability</span><span class="rating-score">±${sp.variance.toFixed(1)} dB</span></div>
-            <div class="rbar-track"><div class="rbar-fill" style="width:${stabPct}%;background:${stabCol}"></div></div>
-          </div>
+    function renderRecommendationsSection(assessment) {
+      return `
+        <div class="recommendations">
+          ${assessment.recommendations.map((rec) => `<div class="recommendation">◆ ${escapeHtml(rec)}</div>`).join("")}
+        </div>
+      `;
+    }
 
-          ${sp.bands ? `
-          <div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px">OCTAVE BANDS AT CAPTURE</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-              ${sp.bands.map(b=>{
-                const col = b.db>-20?'var(--red)':b.db>-40?'var(--amber)':'var(--blue)';
-                return `<div class="mbox"><div class="mlbl">${b.label}</div><div class="mval" style="color:${col};font-size:13px">${b.db>-115?b.db.toFixed(0):'—'}</div></div>`;
-              }).join('')}
-            </div>
-          </div>` : ''}
+    function getReportSection(id) {
+      const sections = ["metrics", "spectrum", "assessment", "recs"];
+      const active = sections.find((section) => STATE.expandedCards[`section-${id}-${section}`] === true);
+      return active || "metrics";
+    }
 
-          ${sp.fftSnapshot ? `
-          <div class="fft-snap-wrap">
-            <div class="fft-snap-title">SPECTRUM SNAPSHOT AT CAPTURE</div>
-            <canvas id="fft-snap-${sp.id}" height="70"></canvas>
-          </div>` : ''}
+    function setReportSection(id, section) {
+      ["metrics", "spectrum", "assessment", "recs"].forEach((name) => {
+        STATE.expandedCards[`section-${id}-${name}`] = name === section;
+      });
+    }
 
-          <div class="assessment">
-            <div class="assess-title">ASSESSMENT</div>
-            <div class="assess-txt">${verdict}</div>
-            ${notes.map(n=>`<div class="assess-sub">${n}</div>`).join('')}
-          </div>
+    function metricTile(label, value, color) {
+      return `<div class="metric-tile"><div class="metric-label">${label}</div><div class="metric-value" style="color:${color}">${value}</div></div>`;
+    }
 
-          <div>
-            <div class="recs-title">RECOMMENDATIONS</div>
-            ${recs.map(r=>`<div class="rec"><span class="rec-ico">◆</span><span>${r}</span></div>`).join('')}
-          </div>
+    function assessSpot(spot, allSpots) {
+      const bassAvg = mean([spot.bands[0].absDb, spot.bands[1].absDb]);
+      const midAvg = mean([spot.bands[3].absDb, spot.bands[4].absDb]);
+      const highMean = mean([spot.bands[6].absDb, spot.bands[7].absDb]);
+      const bassTilt = bassAvg - midAvg;
+      const highTilt = highMean - midAvg;
+      const values = spot.bands.map((band) => band.absDb);
+      const spread = Math.max(...values) - Math.min(...values);
+      const crest = spot.max - spot.avg;
+      const roomAvg = mean(allSpots.map((item) => item.avg));
+      const positionDelta = spot.avg - roomAvg;
+      let score = baseScore(spot.avg);
 
-        </div>` : ''}
-      </div>`;
-    }).join('')}
-  `;
+      if (spot.variance > 15) score -= 14;
+      else if (spot.variance > 9) score -= 8;
+      else if (spot.variance > 5) score -= 3;
+      if (Math.abs(bassTilt) > 10) score -= 10;
+      else if (Math.abs(bassTilt) >= 5) score -= 5;
+      if (spread > 30) score -= 7;
+      if (crest > 20) score -= 5;
+      if (positionDelta > 4) score -= 5;
+      if (spot.variance < 3) score += 4;
+      if (spread < 18) score += 5;
+      if (positionDelta < -4) score += 5;
 
-  // Draw canvases after DOM paint
-  setTimeout(()=>{
-    if (spots.length>1) drawComparison('cmp-canvas');
-    spots.forEach(sp=>{
-      if (sp.fftSnapshot) {
-        drawSnapshotFFT('fft-snap-'+sp.id, sp.fftSnapshot, audioCtx?.sampleRate || 44100);
+      score = Math.max(5, Math.min(100, Math.round(score)));
+      const quality = qualityLabel(score);
+      const lines = [
+        levelVerdict(spot.avg),
+        `Variance at this position is ±${spot.variance.toFixed(1)} dB over ${spot.sampleCount} samples.`,
+        `Crest factor is ${crest.toFixed(1)} dB above the average, with max level ${spot.max.toFixed(1)} dB.`,
+        bassTiltNote(bassTilt),
+        highTiltNote(highTilt),
+        spread > 30 ? `Large spectral coloration (${spread.toFixed(1)} dB spread).` : spread < 18 ? `Spectrally flat position (${spread.toFixed(1)} dB spread).` : `Moderate spectral spread (${spread.toFixed(1)} dB).`,
+        positionDelta >= 0 ? `${positionDelta.toFixed(1)} dB louder than room average.` : `${Math.abs(positionDelta).toFixed(1)} dB quieter than room average.`
+      ];
+      const recommendations = buildRecommendations({ spot, bassTilt, highTilt, spread, crest, positionDelta });
+      return { score, quality, lines, recommendations, bassTilt, highTilt, spread, crest, positionDelta };
+    }
+
+    function buildRecommendations(metrics) {
+      const { spot, bassTilt, highTilt, spread, crest, positionDelta } = metrics;
+      const recs = [];
+      if (bassTilt > 10) {
+        recs.push(`Bass tilt of ${signed(bassTilt)} dB at this position: place 100mm mineral wool floor-to-ceiling in the closest corner.`);
+      } else if (bassTilt >= 5) {
+        recs.push(`Mild bass emphasis of ${signed(bassTilt)} dB: move the mic or listening point 20-40 cm away from the nearest boundary and remeasure.`);
+      } else if (bassTilt < -5) {
+        recs.push(`Bass null of ${bassTilt.toFixed(1)} dB: shift the position along the room length by 30-60 cm before adding EQ.`);
       }
-    });
-  }, 60);
-}
+      if (highTilt > 8) {
+        recs.push(`High-frequency lift of ${signed(highTilt)} dB: treat the nearest hard reflection point with a 50mm absorber or diffuser.`);
+      } else if (highTilt < -12) {
+        recs.push(`High-frequency rolloff of ${highTilt.toFixed(1)} dB: reduce nearby soft obstruction or shorten mic distance before judging absorption.`);
+      }
+      if (spot.variance > 9) {
+        recs.push(`Temporal swing of ±${spot.variance.toFixed(1)} dB: pause HVAC, fans, or external noise sources and repeat a 10-second capture.`);
+      }
+      if (spread > 30) {
+        recs.push(`Spectral spread of ${spread.toFixed(1)} dB: combine corner trapping with first-reflection control before applying narrow EQ.`);
+      }
+      if (spot.avg > 60) {
+        recs.push(`Average level is ${spot.avg.toFixed(1)} dB: reduce equipment noise or close the noise path before making mix decisions here.`);
+      }
+      if (crest > 20) {
+        recs.push(`Crest factor of ${crest.toFixed(1)} dB: identify intermittent clicks or handling noise before using this spot as a reference.`);
+      }
+      if (positionDelta > 4) {
+        recs.push(`This spot is ${positionDelta.toFixed(1)} dB louder than room average: avoid it for noise-floor checks unless the source is intentional.`);
+      } else if (positionDelta < -4) {
+        recs.push(`This spot is ${Math.abs(positionDelta).toFixed(1)} dB quieter than room average: use it as the baseline when comparing treatment changes.`);
+      }
+      if (!recs.length) {
+        recs.push(`Keep this position as a reference: variance is ±${spot.variance.toFixed(1)} dB and spectral spread is ${spread.toFixed(1)} dB.`);
+        recs.push(`Recheck after any furniture change: current average is ${spot.avg.toFixed(1)} dB with bass tilt ${signed(bassTilt)} dB.`);
+      }
+      while (recs.length < 2) {
+        recs.push(`Capture a second pass here after moving 30 cm: compare against the current ${spot.avg.toFixed(1)} dB average.`);
+      }
+      return recs.slice(0, 4);
+    }
 
-function toggleCard(id) {
-  expandState[id] = expandState[id] === false ? true : false;
-  renderAnalysis();
-}
+    function baseScore(avg) {
+      if (avg < 30) return 96;
+      if (avg < 38) return 90;
+      if (avg < 45) return 82;
+      if (avg < 52) return 72;
+      if (avg < 60) return 58;
+      if (avg < 68) return 40;
+      if (avg < 75) return 25;
+      return 10;
+    }
 
-// ═══════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════
-function showErr(msg) { const e=document.getElementById('err-box'); e.textContent=msg; e.style.display=''; }
-function hideErr()    { document.getElementById('err-box').style.display='none'; }
+    function qualityLabel(score) {
+      if (score >= 85) return "Excellent";
+      if (score >= 70) return "Good";
+      if (score >= 55) return "Acceptable";
+      if (score >= 35) return "Poor";
+      return "Critical";
+    }
 
-// Resize canvases on orientation change
-window.addEventListener('resize', ()=>{
-  if (running) { drawWaveform(); drawFFT(); }
-});
-</script>
+    function qualityColorForScore(score) {
+      if (score >= 85) return "var(--green)";
+      if (score >= 55) return "var(--amber)";
+      return "var(--red)";
+    }
+
+    function levelVerdict(avg) {
+      if (avg < 30) return `Very low noise floor at ${avg.toFixed(1)} dB SPL; suitable for critical quiet-room work.`;
+      if (avg < 45) return `Quiet position at ${avg.toFixed(1)} dB SPL; generally usable for monitoring and measurement.`;
+      if (avg < 60) return `Moderate ambient level at ${avg.toFixed(1)} dB SPL; usable but background noise can mask fine detail.`;
+      if (avg < 70) return `Loud ambient level at ${avg.toFixed(1)} dB SPL; acoustic decisions here are noise-biased.`;
+      return `Very loud position at ${avg.toFixed(1)} dB SPL; fix the noise source before judging room response.`;
+    }
+
+    function bassTiltNote(tilt) {
+      if (tilt > 10) return `Corner bass buildup: ${signed(tilt)} dB above mids. Room mode accumulation.`;
+      if (tilt >= 5) return `Mild bass emphasis: ${signed(tilt)} dB. Some corner reinforcement.`;
+      if (tilt >= -5) return `Balanced bass-to-mid ratio (${tilt.toFixed(1)} dB tilt). No buildup detected.`;
+      return `Bass null detected: ${tilt.toFixed(1)} dB below mids. Standing wave destructive zone.`;
+    }
+
+    function highTiltNote(tilt) {
+      if (tilt > 8) return `HF elevation: hard reflective surface nearby (${signed(tilt)} dB above mids).`;
+      if (tilt < -12) return `HF rolloff: absorptive surfaces or distance (${tilt.toFixed(1)} dB versus mids).`;
+      return `High-frequency tilt is ${signed(tilt)} dB versus mids.`;
+    }
+
+    function getBassTilt(spot) {
+      const bassAvg = mean([spot.bands[0].absDb, spot.bands[1].absDb]);
+      const midAvg = mean([spot.bands[3].absDb, spot.bands[4].absDb]);
+      return bassAvg - midAvg;
+    }
+
+    function drawHistory() {
+      const canvas = els.historyCanvas;
+      const ctx = prepareCanvas(canvas, 60);
+      const width = canvasCssWidth(canvas);
+      const height = 60;
+      ctx.clearRect(0, 0, width, height);
+      drawGrid(ctx, width, height, 4, 3);
+      const values = STATE.history;
+      if (!values.length) {
+        drawCanvasLabel(ctx, "Waiting for samples", width, height);
+        return;
+      }
+      ctx.beginPath();
+      values.forEach((db, index) => {
+        const x = values.length === 1 ? 0 : (index / (values.length - 1)) * width;
+        const norm = Math.log10(1 + clamp(db, 0, DB_MAX)) / Math.log10(1 + DB_MAX);
+        const y = height - norm * (height - 8) - 4;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+      const fill = ctx.createLinearGradient(0, 0, 0, height);
+      fill.addColorStop(0, "rgba(245, 166, 35, 0.42)");
+      fill.addColorStop(1, "rgba(245, 166, 35, 0.04)");
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.beginPath();
+      values.forEach((db, index) => {
+        const x = values.length === 1 ? 0 : (index / (values.length - 1)) * width;
+        const norm = Math.log10(1 + clamp(db, 0, DB_MAX)) / Math.log10(1 + DB_MAX);
+        const y = height - norm * (height - 8) - 4;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = "rgba(245, 166, 35, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawSpectrum(fftValues) {
+      const canvas = els.fftCanvas;
+      const ctx = prepareCanvas(canvas, 60);
+      drawFftCanvas(ctx, canvasCssWidth(canvas), 60, fftValues, 2, true);
+    }
+
+    function drawFftSnapshot(canvas, fftValues) {
+      if (!canvas) return;
+      const ctx = prepareCanvas(canvas, 70);
+      drawFftCanvas(ctx, canvasCssWidth(canvas), 70, fftValues, 1.5, false);
+    }
+
+    function drawFftCanvas(ctx, width, height, fftValues, lineWidth, labels) {
+      ctx.clearRect(0, 0, width, height);
+      drawGrid(ctx, width, height, 6, 3);
+      if (!fftValues || !fftValues.length) {
+        drawCanvasLabel(ctx, "No FFT data", width, height);
+        return;
+      }
+      const sampleRate = STATE.audioCtx ? STATE.audioCtx.sampleRate : 48000;
+      const binHz = sampleRate / 4096;
+      const minFreq = 20;
+      const maxFreq = 20000;
+      const minLog = Math.log10(minFreq);
+      const maxLog = Math.log10(maxFreq);
+
+      ctx.beginPath();
+      let started = false;
+      for (let i = 1; i < fftValues.length; i += 1) {
+        const frequency = i * binHz;
+        if (frequency < minFreq || frequency > maxFreq) continue;
+        const x = ((Math.log10(frequency) - minLog) / (maxLog - minLog)) * width;
+        const norm = clamp((fftValues[i] - FFT_MIN_DB) / (FFT_MAX_DB - FFT_MIN_DB), 0, 1);
+        const y = height - norm * (height - 10) - 5;
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+      const fill = ctx.createLinearGradient(0, 0, 0, height);
+      fill.addColorStop(0, "rgba(245, 166, 35, 0.34)");
+      fill.addColorStop(1, "rgba(245, 166, 35, 0.02)");
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      ctx.beginPath();
+      started = false;
+      for (let i = 1; i < fftValues.length; i += 1) {
+        const frequency = i * binHz;
+        if (frequency < minFreq || frequency > maxFreq) continue;
+        const x = ((Math.log10(frequency) - minLog) / (maxLog - minLog)) * width;
+        const norm = clamp((fftValues[i] - FFT_MIN_DB) / (FFT_MAX_DB - FFT_MIN_DB), 0, 1);
+        const y = height - norm * (height - 10) - 5;
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.strokeStyle = "rgba(245, 166, 35, 0.96)";
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+
+      if (labels) {
+        ctx.fillStyle = "rgba(201, 209, 217, 0.58)";
+        ctx.font = "11px Share Tech Mono, Courier New, monospace";
+        [20, 100, 1000, 10000, 20000].forEach((frequency) => {
+          const x = ((Math.log10(frequency) - minLog) / (maxLog - minLog)) * width;
+          ctx.fillText(frequency >= 1000 ? `${frequency / 1000}k` : `${frequency}`, Math.min(width - 24, Math.max(2, x - 10)), height - 6);
+        });
+      }
+    }
+
+    function drawComparisonChart() {
+      const canvas = document.getElementById("comparisonCanvas");
+      if (!canvas) return;
+      const ctx = prepareCanvas(canvas, 260);
+      const width = canvasCssWidth(canvas);
+      const height = 260;
+      ctx.clearRect(0, 0, width, height);
+      drawGrid(ctx, width, height, 5, 4);
+      const chartTop = 18;
+      const chartBottom = height - 54;
+      const chartHeight = chartBottom - chartTop;
+      const gap = 12;
+      const barWidth = Math.max(22, (width - gap * (STATE.spots.length + 1)) / STATE.spots.length);
+
+      STATE.spots.forEach((spot, index) => {
+        const x = gap + index * (barWidth + gap);
+        const avgNorm = clamp(spot.avg / 100, 0, 1);
+        const barHeight = avgNorm * chartHeight;
+        const y = chartBottom - barHeight;
+        const markerMinY = chartBottom - clamp(spot.min / 100, 0, 1) * chartHeight;
+        const markerMaxY = chartBottom - clamp(spot.max / 100, 0, 1) * chartHeight;
+        const gradient = ctx.createLinearGradient(0, y, 0, chartBottom);
+        gradient.addColorStop(0, levelColor(spot.avg));
+        gradient.addColorStop(1, "rgba(245, 166, 35, 0.18)");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y, barWidth, barHeight);
+        ctx.strokeStyle = "rgba(201, 209, 217, 0.74)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + barWidth / 2, markerMaxY);
+        ctx.lineTo(x + barWidth / 2, markerMinY);
+        ctx.moveTo(x + barWidth * 0.25, markerMaxY);
+        ctx.lineTo(x + barWidth * 0.75, markerMaxY);
+        ctx.moveTo(x + barWidth * 0.25, markerMinY);
+        ctx.lineTo(x + barWidth * 0.75, markerMinY);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(201, 209, 217, 0.85)";
+        ctx.font = "12px Rajdhani, Courier New, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(trimLabel(spot.name, 12), x + barWidth / 2, height - 30);
+        ctx.fillStyle = levelColor(spot.avg);
+        ctx.font = "13px Share Tech Mono, Courier New, monospace";
+        ctx.fillText(`${spot.avg.toFixed(1)} dB`, x + barWidth / 2, height - 13);
+      });
+      ctx.textAlign = "left";
+    }
+
+    function renderAnalysisCanvases() {
+      drawComparisonChart();
+      STATE.spots.forEach((spot) => {
+        const canvas = document.getElementById(`fftSnap-${spot.id}`);
+        drawFftSnapshot(canvas, spot.fftSnapshot);
+      });
+    }
+
+    function resizeVisuals() {
+      prepareCanvas(els.historyCanvas, 60);
+      prepareCanvas(els.fftCanvas, 60);
+      const comparison = document.getElementById("comparisonCanvas");
+      if (comparison) prepareCanvas(comparison, 260);
+      STATE.spots.forEach((spot) => {
+        const snapshot = document.getElementById(`fftSnap-${spot.id}`);
+        if (snapshot) prepareCanvas(snapshot, 70);
+      });
+    }
+
+    function prepareCanvas(canvas, cssHeight) {
+      const ratio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      const width = canvasCssWidth(canvas);
+      const height = cssHeight;
+      const targetWidth = Math.round(width * ratio);
+      const targetHeight = Math.round(height * ratio);
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      return ctx;
+    }
+
+    function canvasCssWidth(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+      return Math.max(1, Math.round(rect.width || canvas.clientWidth || canvas.offsetWidth || parentWidth || 320));
+    }
+
+    function drawGrid(ctx, width, height, columns, rows) {
+      ctx.strokeStyle = "rgba(30, 45, 61, 0.72)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < columns; i += 1) {
+        const x = (i / columns) * width;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let i = 1; i < rows; i += 1) {
+        const y = (i / rows) * height;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawCanvasLabel(ctx, text, width, height) {
+      ctx.fillStyle = "rgba(85, 96, 112, 0.9)";
+      ctx.font = "13px Rajdhani, Courier New, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(text, width / 2, height / 2 + 4);
+      ctx.textAlign = "left";
+    }
+
+    function setView(view) {
+      const isAnalysis = view === "analysis";
+      els.meterPanel.dataset.visible = String(!isAnalysis);
+      els.analysisPanel.dataset.visible = String(isAnalysis);
+      els.tabs.forEach((tab) => {
+        tab.dataset.current = String(tab.dataset.tab === view);
+      });
+      if (isAnalysis) {
+        renderAnalysis();
+      }
+    }
+
+    function installManifest() {
+      const iconSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="96" fill="#080a0c"/>
+          <path d="M90 318c35-84 66-126 96-126 43 0 45 126 88 126 33 0 58-72 78-126 17 42 39 84 70 126" fill="none" stroke="#f5a623" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="256" cy="256" r="178" fill="none" stroke="#1e2d3d" stroke-width="22"/>
+          <text x="256" y="410" text-anchor="middle" font-family="monospace" font-size="54" fill="#f5a623">ACO</text>
+        </svg>`;
+      const icon = `data:image/svg+xml,${encodeURIComponent(iconSvg)}`;
+      const manifest = {
+        name: "ROOM ACO METER",
+        short_name: "ACO Meter",
+        start_url: "./index.html",
+        scope: "./",
+        display: "standalone",
+        background_color: "#080a0c",
+        theme_color: "#080a0c",
+        icons: [
+          { src: icon, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+          { src: icon, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+        ]
+      };
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+      document.head.append(link);
+    }
+
+    function levelColor(db) {
+      if (db < 45) return "var(--green)";
+      if (db <= 70) return "var(--amber)";
+      return "var(--red)";
+    }
+
+    function bandColor(db) {
+      if (db < 45) return "var(--blue)";
+      if (db <= 65) return "var(--amber)";
+      return "var(--red)";
+    }
+
+    function formatDb(value) {
+      return Number.isFinite(value) ? `${value.toFixed(1)}` : "—";
+    }
+
+    function formatBandLabel(value) {
+      return value >= 1000 ? `${value / 1000}kHz` : `${value}Hz`;
+    }
+
+    function mean(values) {
+      const finite = values.filter(Number.isFinite);
+      return finite.length ? finite.reduce((sum, value) => sum + value, 0) / finite.length : 0;
+    }
+
+    function signed(value) {
+      return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function trimLabel(text, length) {
+      return text.length > length ? `${text.slice(0, length - 1)}…` : text;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
 </body>
 </html>
