@@ -336,6 +336,7 @@
     <div class="cap-row">
       <input class="spot-input" id="spot-input" placeholder="Position name (Corner A, Window…)" onkeydown="if(event.key==='Enter')captureSpot()"/>
       <button class="cap-btn" id="cap-btn" onclick="captureSpot()" disabled>CAPTURE</button>
+      <div id="sample-hint" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:0 14px 8px;margin-top:-6px">Waiting for samples…</div>
     </div>
     <div class="spots-wrap" id="spots-list">
       <div class="no-spots" id="no-spots-msg">Start meter → move to position → name it → CAPTURE.<br><span style="color:var(--amber);font-size:11px">Stats reset between each capture.</span></div>
@@ -436,6 +437,9 @@ function stopMic() {
   document.getElementById('btn-stop').style.display  = 'none';
   document.getElementById('cap-btn').disabled = true;
   setMicPill(false);
+  document.getElementById('db-big').textContent = '0.0';
+  document.getElementById('db-big').className = 'db-big';
+  document.getElementById('bar-fill').style.width = '0%';
 }
 
 function setMicPill(on) {
@@ -479,6 +483,15 @@ function tick() {
   drawFFT();
   updateBands();
 
+  // Update sample hint
+  const hint = document.getElementById('sample-hint');
+  if (hint) {
+    const n = statsAcc.count;
+    if (n < 5) hint.textContent = 'Collecting… (' + n + ' samples)';
+    else hint.textContent = '✓ Ready to capture — ' + n + ' samples';
+    hint.style.color = n < 5 ? 'var(--text-dim)' : 'var(--green)';
+  }
+
   rafId = requestAnimationFrame(tick);
 }
 
@@ -506,10 +519,11 @@ function updateReadout(db, s) {
   document.getElementById('env-text').textContent = env.txt;
 }
 
-function calcVariance() {
-  if (history.length < 2) return 0;
-  const avg = history.reduce((a,b) => a+b, 0) / history.length;
-  return Math.sqrt(history.map(v => (v-avg)**2).reduce((a,b) => a+b, 0) / history.length);
+function calcVariance(arr) {
+  const data = arr || history;
+  if (data.length < 2) return 0;
+  const avg = data.reduce((a,b) => a+b, 0) / data.length;
+  return Math.sqrt(data.map(v => (v-avg)**2).reduce((a,b) => a+b, 0) / data.length);
 }
 
 function dbEnv(db) {
@@ -680,28 +694,58 @@ function snapshotBands() {
 // ═══════════════════════════════════════════════════════
 function captureSpot() {
   if (!running) return;
+  if (statsAcc.count < 5) {
+    flashMsg('Hold still — collecting samples…'); return;
+  }
   const s = statsAcc;
-  const name = document.getElementById('spot-input').value.trim() || ('Spot ' + (spots.length + 1));
+  // Name BEFORE push so index is correct
+  const spotNumber = spots.length + 1;
+  const name = document.getElementById('spot-input').value.trim() || ('Spot ' + spotNumber);
   const variance = calcVariance();
   const avg = s.count ? s.sum / s.count : 0;
+  // Guard: min can't be 0 (artifact of startup)
+  const minVal = s.min === Infinity || s.min === 0 ? avg * 0.85 : s.min;
+  const maxVal = s.max === -Infinity ? avg * 1.15 : s.max;
 
   spots.push({
     id: Date.now(),
     name,
-    avg, min: s.min, max: s.max, variance,
+    avg,
+    min: minVal,
+    max: maxVal,
+    variance,
     timestamp: new Date().toLocaleTimeString(),
-    sampleCount: history.length,
+    sampleCount: s.count,
     bands: snapshotBands(),
     fftSnapshot: snapshotFFT(),
   });
 
-  // Reset for next position
+  // Hard reset for next position
   statsAcc = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
   history = [];
   document.getElementById('spot-input').value = '';
+  document.getElementById('s-min').textContent = '—';
+  document.getElementById('s-avg').textContent = '—';
+  document.getElementById('s-max').textContent = '—';
+  document.getElementById('s-var').textContent = '—';
 
+  flashMsg('✓ ' + name + ' captured!');
   renderSpotsList();
   document.getElementById('tab-analysis').textContent = 'ANALYSIS (' + spots.length + ')';
+}
+
+function flashMsg(msg) {
+  let el = document.getElementById('flash-msg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'flash-msg';
+    el.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#f5a623;color:#000;font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:0.08em;padding:10px 20px;border-radius:20px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 2000);
 }
 
 function removeSpot(id) {
